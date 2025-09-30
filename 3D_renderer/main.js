@@ -16,12 +16,12 @@ const Zfar = 10000
 
 const ModelSpace = []
 
-const camera = {'x': 0,'y': 0,'z': 0}
+const camera = {'x': -1,'y': -1,'z': -1}
 const PerspectiveMatrix = createPerspektiveMatrix()
 let CameraMatrix
 
 document.addEventListener('DOMContentLoaded', () => { 
-    ModelSpace.push(new Cube(0,0,-20,5,5,5))
+    ModelSpace.push(new Cube(0,0,0,1,1,1))
     renderingPipeline()
 })
 function renderingPipeline() {
@@ -43,22 +43,26 @@ class Object {
         this.faces = [];
         this.TransMatrix = this.createTransMatrix()
     }
-    render() {
-        let vectors = []
-        for(let vert of this.vert) {
-            console.log([vert])
-            const PCM = multiplyMatrices(multiplyMatrices(multiplyMatrices([vert],this.TransMatrix),CameraMatrix),PerspectiveMatrix)
-            const clipSpace = PCM
-            // NDC (NormalizedDeviceCoordinates)
-            const NDCx = clipSpace[0][0] / clipSpace[0][3];
-            const NDCy = clipSpace[0][1] / clipSpace[0][3];
-            const NDCz = clipSpace[0][2] / clipSpace[0][3]; 
-            //Vieport Transform (the actual Pixel)
-            const screenX = size.w / 2 *(NDCx + 1)
-            const screenY = size.h / 2 *(1 - NDCy)
-            vectors.push([screenX,screenY,NDCz])
-            console.log(screenX + " : " + screenY)
-            drawDot(screenX,screenY)
+    render(ViewProjectionMatrix) { 
+        let vectors = [];
+
+        const MVP_Matrix = multiplyMatrices(ViewProjectionMatrix, this.TransMatrix);
+
+        for (let vert of this.vert) {
+            const clipSpace = multiplyMatrixByVector(MVP_Matrix, vert);
+
+            const w = clipSpace[0][3];
+            if (w === 0) continue;
+
+            const NDCx = clipSpace[0][0] / w;
+            const NDCy = clipSpace[0][1] / w;
+            const NDCz = clipSpace[0][2] / w;
+
+            const screenX = size.w / 2 * (NDCx + 1);
+            const screenY = size.h / 2 * (1 - NDCy);
+            vectors.push([screenX, screenY, NDCz]);
+            
+            drawDot(screenX, screenY);
         }
     }
     createTransMatrix() {
@@ -81,6 +85,7 @@ class Object {
         const Rz = createIdentityMatrix(4);
         Rz[0][0] = cZ; Rz[0][1] = -sZ;
         Rz[1][0] = sZ; Rz[1][1] = cZ;
+        console.log("Inspecting Rz and Ry:", Rz, Ry, Rx);
         
         const S = createIdentityMatrix(4);
         S[0][0] = this.scale.x; 
@@ -91,7 +96,6 @@ class Object {
         T[0][3] = this.t.x; 
         T[1][3] = this.t.y; 
         T[2][3] = this.t.z;
-
         const R = multiplyMatrices(multiplyMatrices(Rz, Ry), Rx);
         return multiplyMatrices(T, multiplyMatrices(R, S));
     }
@@ -137,6 +141,11 @@ function drawLine(x1,y1,x2,y2,color) {
     ctx.stroke()
 }
 function multiplyMatrices(MatrixA,MatrixB){
+    console.log(MatrixA,MatrixB)
+    if (!MatrixA || !MatrixB || !MatrixA.length || !MatrixB.length || !MatrixA[0] || !MatrixB[0]) {
+        console.error("Invalid matrix provided to multiplyMatrices");
+        return null;
+    }
     const rowsA = MatrixA.length
     const colsA = MatrixA[0].length
     const rowsB = MatrixB.length
@@ -145,15 +154,15 @@ function multiplyMatrices(MatrixA,MatrixB){
         console.log('Mismatxhing Matrices')
         return null
     }
-    const MatrixC = newMatrix(rowsA, colsB, 0);
+    const result = newMatrix(rowsA, colsB, 0);
     for(let i = 0; i < rowsA; i++) {
         for(let j = 0; j < colsB; j++) {
             for(let k = 0; k < colsA; k++) {
-                MatrixC[i][j] += MatrixA[i][k] * MatrixB[k][j]
+                result[i][j] += MatrixA[i][k] * MatrixB[k][j]
             }
         }
     }
-    return MatrixC
+    return [result]
 }
 function createCameraMatrix() {
     const Matrix = createIdentityMatrix(4);
@@ -168,8 +177,8 @@ function createPerspektiveMatrix() {
     const ZnZf = Znear - Zfar
     Matrix[0][0] = 1 / (aspectRatio * tanFOV2)
     Matrix[1][1] = 1 / tanFOV2
-    Matrix[2][2] = (Zfar + Znear) / (ZnZf)
-    Matrix[2][3] = (2 * Zfar * Znear) / (ZnZf)
+    Matrix[2][2] = -(Zfar + Znear) / (ZnZf)
+    Matrix[2][3] = -(2 * Zfar * Znear) / (ZnZf)
     Matrix[3][2] = -1
     return Matrix
 }
