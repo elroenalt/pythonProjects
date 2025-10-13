@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+    <title>A simple HTML document</title>
+    <link  rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="selectionScreen">
+
+    </div>
+    <div id="questioningDisplay">
+        <div id="progressBar">
+            <div id="progress"></div>
+        </div>
+        <div id="questions">
+            <div id="instruction">translate</div>
+            <div id="question">____</div>
+            <div id="answers">
+                <input type="radio" id="choice0" name="selectionType" value="0" required>
+                <label for="choice0" class="selection-button">Option A</label>
+
+                <input type="radio" id="choice1" name="selectionType" value="1">
+                <label for="choice1" class="selection-button">Option B</label>
+
+                <input type="radio" id="choice2" name="selectionType" value="2">
+                <label for="choice2" class="selection-button">Option C</label>
+            </div>
+            <div id="nextAction">check</div>
+        </div>
+    </div>
+</body>
+<script src="code.js"></script>
+</html>

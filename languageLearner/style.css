@@ -1,0 +1,88 @@
+:root {
+  --button-color: #113356;
+  --button-hover-color: #16426e;
+  --button-selected-color: #05213d;
+  --button-border-color: #292934;
+  --text-color: #fff;
+  --background-color: #000;
+  --question-screen-font-size: 2rem;
+}
+#nextAction {
+  display: inline;
+  padding: 10px 30px;
+  margin-right: 1rem;
+  margin-bottom: 1rem;
+  border: 2px solid var(--button-border-color);
+  border-radius: 5px;
+  background-color: var(--button-color);
+  cursor: pointer; 
+  text-align: center;
+  transition: background-color 0.3s, border-color 0.3s; 
+}
+#nextAction:hover {
+  background-color: var(--button-hover-color);
+}
+#progressBar {
+  margin-top: 3rem;
+  position: relative;
+  left: 50%;
+  transform: translate(-50%,0rem);
+  width: 40vw;
+  height: 2rem;
+  border-radius: 1rem;
+  background-color: var(--button-border-color);
+}
+#progress {
+  background-color: green;
+  width: 90%;
+  height: 2rem;
+  border-radius: 1rem;
+}
+#questions {
+    font-size: var(--question-screen-font-size);
+    width: 100%;
+    height: 100vh;
+    background-color: var(--background-color);
+    color: var(--text-color);
+    text-align: center;
+}
+#questions div {
+    margin: 3rem;
+}
+#answers {
+  text-align: center;
+}
+html {
+    color: var(--text-color);
+    background-color: var(--background-color);
+}
+input[type="radio"] {
+  display: none; 
+  cursor: pointer;
+}
+
+#answers label {
+  display: inline-block; 
+  padding: 10px 20px;
+  margin-right: 1rem;
+  margin-bottom: 1rem;
+  border: 2px solid var(--button-border-color);
+  border-radius: 5px;
+  background-color: var(--button-color);
+  cursor: pointer; 
+  text-align: center;
+  transition: background-color 0.3s, border-color 0.3s; 
+}
+
+#answers label:hover {
+  background-color: var(--button-hover-color);
+}
+input[type="radio"]:checked + label {
+  background-color: var(--button-selected-color) !important; 
+}
+.green {
+  background-color: green !important;
+}
+.red {
+  background-color: red !important;
+}

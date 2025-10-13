@@ -300,7 +300,7 @@ def newQuestionSet(wordSet, amount):
         set = {
             'question': correct_word,  # The word the user has to define
             'options': all_options_defs,
-            'corIndex': corPos  # The 0-indexed position of the correct answer
+            'corIndex': corPos,  # The 0-indexed position of the correct answer
             'dir': radom.random
         }
         sets.append(set)
