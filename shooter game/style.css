@@ -1,0 +1,12 @@
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+#gameScreen {
+    background-color: gray;
+    color: rgba(255, 0, 217, 0.363)
+}
+#HealthBar {
+    font-family: 'VT323', cursive;
+    text-shadow: 2px 2px #000;
+    color: #ffcc00;
+
+}
