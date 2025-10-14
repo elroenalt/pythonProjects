@@ -21,102 +21,93 @@ const keys = {
 }
 
 class Entity {
-    constructor(x,y,w,h,vx,vy,rotx,roty,color,damage = 2,type = "entity",form = "circle") {
+    constructor(x,y,w,h,vx,vy,rotx,roty,color,stats = {"damage": 20,"health": {"max": 10,"cur":5,"invunerability":10}},type = "entity",form = "circle") {
         this.active = true
+        this.dim = {"height": h, "width": w,"hitboxHeight": h + HitBoxOfSet, "hitboxWidth": w + HitBoxOfSet}
         this.v = {"x": vx, "y": vy}
-        this.size = {"height": h, "width": w}
-        this.hitbox = {"height": h + HitBoxOfSet, "width": w + HitBoxOfSet}
-        this.pos = {"x":x,"y":y}
-        this.rot = {"x": rotx,"y": roty}
+        this.loc = {"posX":x,"posY":y,"rotX": rotx,"rotY": roty}
         this.color = color
         this.type = type; 
         this.form = form;
-        this.damage = damage;
+        this.stats = stats;
     }
     tickUpdate() {
         if(!this.active) return
         this.move();
-        this.checkDeath();
+        this.checkDeath()
         this.draw();
     }
     collided() {
-
     }
     draw() {
         ctx.fillStyle = this.color
         ctx.beginPath()
-        ctx.arc(this.pos.x,this.pos.y,this.hitbox.width,0,2*Math.PI)
+        ctx.arc(this.loc.posX,this.loc.posY,this.dim.width,0,2*Math.PI)
         ctx.fill()
     }
     move() {
-        const newPosX = this.pos.x + this.v.x
-        const newPosY = this.pos.y + this.v.y
-        if(newPosX - this.hitbox.width <= 0 || newPosX + this.hitbox.width >= Border.x) {
+        const newPosX = this.loc.posX + this.v.x
+        const newPosY = this.loc.posY + this.v.y
+        if(newPosX - this.dim.hitboxWidth <= 0 || newPosX + this.dim.hitboxWidth >= Border.x) {
             this.v.x *= -1
         }
-        if(newPosY - this.hitbox.width <= 0 || newPosY + this.hitbox.width >= Border.y) {
+        if(newPosY - this.dim.hitboxWidth <= 0 || newPosY + this.dim.hitboxWidth >= Border.y) {
             this.v.y *= -1
         }
-        this.pos.x += this.v.x
-        this.pos.y += this.v.y
+        this.loc.posX += this.v.x
+        this.loc.posY += this.v.y
     }
     checkColission(Object2) {
-        const dx = Object2.pos.x - this.pos.x
-        const dy = Object2.pos.y - this.pos.y
+        const dx = Object2.loc.posX - this.loc.posX
+        const dy = Object2.loc.posY - this.loc.posY
         const d = Math.sqrt(Math.pow(dx,2) + Math.pow(dy,2))
-        if(d <= Object2.hitbox.width + this.hitbox.width) {
+        if(d <= Object2.dim.hitboxWidth + this.dim.hitboxWidth) {
+            this.collided()
             return true;
         }
         return false
     }
     checkDeath() {
-        if(this.health <= 0) {
+        if(this.type != "Projectyle" && this.stats.health.cur <= 0) {
             this.active = false
         }
     }
 }
 class Player extends Entity{
-    constructor(x, y, w, h, vx, vy, rotx, roty, color, maxHealth, type ="player", form = 'circle') {
+    constructor(x, y, w, h, vx, vy, rotx, roty, color,stats = {"speed":2,"damage": 20,"health":{"max": 20,"cur":20,"invunerability":10},"projectyle": {"cooldown":50,"speed":6,"life": 20,"damage":2},}, type ="player", form = 'circle') {
         super(x, y, w, h, vx, vy, rotx, roty, color, type, form); 
-
-        this.maxHealth = maxHealth;
-        this.stats = {
-            "projectyleCountdown": 50,
-            "projectyleSpeed": 6,
-            "projectyleLife": 20,
-        }
-        this.health = maxHealth;
+        this.stats = stats
         this.type = type; 
         this.form = form;
-        this.invunerable = 5;
-        this.projectyleCountdown = this.stats.projectyleCountdown
+        this.invunerable = stats.health.invunerability;
+        this.projectylCooldown = this.stats.projectyle.cooldown
 
     }
     drawAimHelper() {
 
     }
     shootProjectyles() {
-        const dx = mouse.x - this.pos.x
-        const dy = mouse.y - this.pos.y
+        const dx = mouse.x - this.loc.posX
+        const dy = mouse.y - this.loc.posY
         const radians = Math.atan2(dy, dx)
-        const x = this.pos.x + Math.cos(radians) * 40
-        const y = this.pos.y + Math.sin(radians) * 40
+        const x = this.loc.posX + Math.cos(radians) * 40
+        const y = this.loc.posY + Math.sin(radians) * 40
         ctx.fillStyle = 'rgba(156, 9, 46, 0.5)'
         ctx.beginPath()
         ctx.arc(x, y,15,0,2*Math.PI)
         ctx.fill()
-        if(this.projectyleCountdown <= 0) {
-            this.projectyleCountdown = this.stats.projectyleCountdown
-            const vx = Math.cos(radians) * this.stats.projectyleSpeed
-            const vy = Math.sin(radians) * this.stats.projectyleSpeed
-            Projectyles.push(new Projectyle(x,y,4,4,vx,vy,0,0,'black'))
+        if(this.projectylCooldown <= 0) {
+            this.projectylCooldown = this.stats.projectyle.cooldown
+            const vx = Math.cos(radians) * this.stats.projectyle.speed
+            const vy = Math.sin(radians) * this.stats.projectyle.speed
+            Projectyles.push(new Projectyle(x,y,6,6,vx,vy,0,0,'black',{"damage": 2,"life": 300,"penetrate": 1}))
         }
     }
     draw() {
-        const x = this.pos.x - this.size.width;
-        const y = this.pos.y - this.size.height; 
-        const width = this.size.width * 2;
-        const height = this.size.height * 2;
+        const x = this.loc.posX - this.dim.width;
+        const y = this.loc.posY - this.dim.height; 
+        const width = this.dim.width * 2;
+        const height = this.dim.height * 2;
 
         ctx.fillStyle = "darkgray";
         ctx.fillRect(x, y, width, height);
@@ -125,18 +116,18 @@ class Player extends Entity{
         ctx.strokeRect(x, y, width, height);
     }
     tickUpdate() {
-        if(this.health <= 0) {
+        if(this.stats.health.cur <= 0) {
+            this.stats.health.cur = 0
             this.active = false
         }
         this.invunerable -= 1;
-        this.projectyleCountdown -= 1;
+        this.projectylCooldown -= 1;
         this.drawAimHelper()
         this.handelKeyInput()
         this.checkAllColl()
         super.tickUpdate()
         this.shootProjectyles()
-
-        drawText(`Health: ${this.health}/${this.maxHealth}`,10,20)
+        drawText(`Health: ${this.stats.health.cur}/${this.stats.health.max}`,10,20)
     }
     checkAllColl() {
         for(let entity of Entities) {
@@ -149,8 +140,8 @@ class Player extends Entity{
     }
     hitEntity(Entity2) {
         if(this.invunerable <= 0) {
-            this.health -= Entity2.damage
-            this.invunerable = 10;
+            this.stats.health.cur -= Entity2.stats.damage
+            this.invunerable = this.stats.health.invunerability;
         }
     }
     move() {
@@ -159,31 +150,29 @@ class Player extends Entity{
         super.move()
     }
     handelKeyInput() {
-        if(keys.w) this.v.y -= 2
-        if(keys.s) this.v.y += 2
-        if(keys.a) this.v.x -= 2
-        if(keys.d) this.v.x += 2
+        if(keys.w) this.v.y -= this.stats.speed
+        if(keys.s) this.v.y += this.stats.speed
+        if(keys.a) this.v.x -= this.stats.speed
+        if(keys.d) this.v.x += this.stats.speed
     }
     
 }
 class Projectyle extends Entity {
-    constructor(x, y, w, h, vx, vy, rotx, roty, color, damage = 2, type ="Projectyle", form = 'circle') {
+    constructor(x = 0, y = 0, w = 10, h = 10, vx = 0, vy = 0, rotx = 0, roty = 0, color = 'black', stats = {"damage": 20,"life": 300,"penetrate": 1}, type ="Projectyle", form = 'circle') {
         super(x, y, w, h, vx, vy, rotx, roty, color, type, form); 
-        
-        this.damage = damage;
         this.type = type; 
         this.form = form;
-        this.bulletLife = 300;
+        this.stats = stats
     }
     tickUpdate() {
-        this.bulletLife -= 1;
-        if(this.bulletLife <= 0) {this.active = false}
-        this.checkAllColl()
+        this.stats.life -= 1;
+        if(this.stats.life <= 0 || this.stats.penetrate <= 0) {this.active = false}
         super.tickUpdate()
+        this.checkAllColl()
     }
     move() {
-        this.v.x *= 1.0001;
-        this.v.y *= 1.0001;
+        this.v.x *= 1.001;
+        this.v.y *= 1.001;
         super.move()
     }
     checkAllColl() {
@@ -196,42 +185,68 @@ class Projectyle extends Entity {
         }
     }
     hitEntity(Entity2) {
-        this.active = false
-        Entity2.active = false;
-        Entity2.health -= this.damage
-        
+        this.stats.penetrate -= 1;
+        if(this.stats.penetrate <= 0) {
+            this.active = false
+        }
+        Entity2.stats.health.cur -= this.stats.damage;
     }
 }
 class Enemy extends Entity {
-    constructor(x, y, w, h, vx, vy, rotx, roty, color, maxHealth, damage = 2, type ="enemy", form = 'circle') {
+    constructor(x, y, w, h, vx, vy, rotx, roty, color,stats = {"speed":2,"moveCheckCooldown": 20,"damage": 2,"health":{"max": 10,"cur":5,"invunerability":10}} , type ="enemy", form = 'circle') {
         super(x, y, w, h, vx, vy, rotx, roty, color, type, form); 
         this.speed = 2;
-        this.damage = damage;
-        this.maxHealth = maxHealth;
-        this.health = maxHealth;
         this.type = type; 
         this.form = form;
-        this.moveCoolUpdateCooldown = 5
+        this.stats = stats
+        this.moveCoolown = this.stats.moveCheckCooldown
     }
     tickUpdate() {
-        this.moveCoolUpdateCooldown -= 1;
+        this.moveCoolown-= 1;
         super.tickUpdate()
+        drawText(`Enemy: ${this.stats.health.cur}/${this.stats.health.max}`,this.loc.posX- this.dim.hitboxWidth * 2,this.loc.posY - this.dim.hitboxHeight * 2)
     }
     move() {
-        if(this.moveCoolUpdateCooldown <= 0) {
-            this.moveCoolUpdateCooldown = 5
-            const dx = player.pos.x - this.pos.x
-            const dy = player.pos.y - this.pos.y
+        if(this.moveCoolown <= 0) {
+            this.moveCoolown= this.stats.moveCheckCooldown
+            const dx = player.loc.posX - this.loc.posX
+            const dy = player.loc.posY - this.loc.posY
             const radians = Math.atan2(dy, dx)
-            const vx = Math.cos(radians)  * this.speed
-            const vy = Math.sin(radians) * this.speed
-            console.log(this.pos.x + " : " + this.pos.y )
-            this.v.x += vx;
-            this.v.y += vy;
+            const vx = Math.cos(radians)  * this.stats.speed
+            const vy = Math.sin(radians) * this.stats.speed
+            this.v.x = vx;
+            this.v.y = vy;
         }
-        this.v.x *= 0.8;
-        this.v.y *= 0.8
         super.move()
+    }
+}
+class WaveManager {
+    constructor(baseV = {"maxHealth": 4, "speed": 2,"damage":2,"enemyCount":1}) {
+        this.baseV = baseV
+        this.Wave = 0
+    }
+    spawnNewWave() {
+        const health = this.baseV.maxHealth + (5 * this.Wave) + (1.5 * Math.pow(this.Wave, 2));
+        const speed = this.baseV.speed + (0.1 * this.Wave) + (0.01 * Math.pow(this.Wave, 2));
+        const damage = Math.floor((this.baseV.damage + (1 * this.Wave) + (0.3 * Math.pow(this.Wave, 2))));
+        const EnemyCount = Math.ceil(this.baseV.enemyCount + (this.Wave / 5) + (Math.pow(this.Wave, 2) / 200));
+        console.log(EnemyCount)
+        for(let i = 0; i < EnemyCount; i++) {
+            const x = 200;
+            const y = 200;
+            const size = 20;
+            const color = enemieColor[randInt(0,20)]
+            const stats = {
+                "speed":speed,
+                "moveCheckCooldown": 10,
+                "damage": damage,
+                "health":{"max": health,"cur":health,"invunerability":10}
+            }
+            Entities.push(
+                new Enemy(x,y,size,size,0,0,0,0,color,stats)
+            )
+        }
+        this.Wave += 1
     }
 }
 let Projectyles = [
@@ -240,14 +255,28 @@ let Projectyles = [
 let Entities = [
     
 ]
-const player = new Player(200,290,20,20,0,0,0,0,'blue',20)
+let gameRunning = true
+const waveManager = new WaveManager()
+const player = new Player(200,290,20,20,0,0,0,0,'blue')
 function gameLoop() {
-    if(!player.active) return
+    if(gameRunning) {
+        if(!player.active) return
+        EntityUpdate()
+    }else {
+    }
+    requestAnimationFrame(gameLoop)
+}
+function gamePaused() {
+    ctx.fillStyle = "rgba(255, 0, 179, 0.005)"
+    ctx.fillRect(0,0,Border.x,Border.y)
+
+    drawText("Game Paused",Border.x/2,Border.y/2-40, fontColor = 'black', fontSize = '50px', fontFamily = 'sans-serif',textAlign = 'center',textBaseline = 'middle')
+    drawText("click ESC to unPause",Border.x/2,Border.y/2+50, fontColor = 'black', fontSize = '40px', fontFamily = 'sans-serif',textAlign = 'center',textBaseline = 'middle')
+}
+function EntityUpdate() {
     ctx.clearRect(0,0,Border.x,Border.y)
     for(let entity of Entities) {
-        if(entity.active) {
-            entity.tickUpdate()
-        }
+        entity.tickUpdate()
     }
     for(let projectyle of Projectyles) {
         projectyle.tickUpdate()
@@ -255,18 +284,18 @@ function gameLoop() {
     Entities = Entities.filter(entity => entity.active);
     Projectyles = Projectyles.filter(projectyl => projectyl.active);
     if(Entities.length == 0) {
-        for(let i = 0; i < dificulty; i ++) {
-            Entities.push(new Enemy(randInt(100,400),randInt(30,50),randInt(10,20),10,0,0,0,0,enemieColor[randInt(0,20)]),)
-        }
-        dificulty += 1
+        waveManager.spawnNewWave()
     }
     player.tickUpdate()
-    requestAnimationFrame(gameLoop)
 }
 requestAnimationFrame(gameLoop)
-
 document.addEventListener('keydown', (e) => {
-    const key = e.key
+    const key = e.key 
+    if(e.key === 'Escape') {
+        gameRunning = !gameRunning
+        gamePaused()
+        return
+    }
     keys[key] = true
 })
 document.addEventListener('keyup', (e) => {
@@ -276,16 +305,12 @@ document.addEventListener('keyup', (e) => {
 function randInt(min,max) {
     return Math.floor(Math.random() * (max - min + 1)) + min; 
 }
-function drawText(text, x, y, fontColor = 'white', fontSize = '20px', fontFamily = 'sans-serif') {
+function drawText(text, x, y, fontColor = 'white', fontSize = '20px', fontFamily = 'sans-serif',textAlign = 'left',textBaseline = 'middle') {
     ctx.font = `${fontSize} ${fontFamily}`;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
+    ctx.textAlign = textAlign;
+    ctx.textBaseline = textBaseline;
     ctx.fillStyle = fontColor;
     ctx.fillText(text, x, y);
-    
-    // ctx.strokeStyle = 'black';
-    // ctx.lineWidth = 2;
-    // ctx.strokeText(text, x, y);
 }
 canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
