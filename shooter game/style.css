@@ -2,7 +2,11 @@
 
 #gameScreen {
     background-color: gray;
-    color: rgba(255, 0, 217, 0.363)
+    color: rgba(255, 0, 217, 0.363);
+    position: relative;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%,0rem);
 }
 #HealthBar {
     font-family: 'VT323', cursive;
