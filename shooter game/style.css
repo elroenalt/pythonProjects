@@ -1,16 +1,15 @@
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
-
+body, html {
+    margin: 0;
+    padding: 0;
+    overflow: hidden; 
+    background-color: rgb(34, 69, 69);
+}
 #gameScreen {
-    background-color: gray;
+    background-color: darkslategray;
     color: rgba(255, 0, 217, 0.363);
     position: relative;
     left: 50%;
     top: 50%;
     transform: translate(-50%,0rem);
-}
-#HealthBar {
-    font-family: 'VT323', cursive;
-    text-shadow: 2px 2px #000;
-    color: #ffcc00;
-
+    border-radius: 0rem;
 }

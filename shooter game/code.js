@@ -1,26 +1,35 @@
 const canvas = document.querySelector('#gameScreen')
+canvas.height = window.innerHeight
+canvas.width = window.innerWidth
 const ctx = canvas.getContext('2d')
-const GAME_CONFIG = {
-    BORDER: { x: canvas.width, y: canvas.height },
-    HITBOX_OFFSET: 2,
-    ENEMY_COLORS: [
-        "#FF0000", "#DC143C", "#FFA500", "#800000", "#FF2400",
-        "#6B8E23", "#A0522D", "#006400", "#708090", "#483C32",
-        "#00FFFF", "#8A2BE2", "#7FFF00", "#FFD700", "#FF69B4",
-        "#F5F5F5", "#000000", "#4B0082", "#008080", "#964B00"
-    ],
-    PLAYER_BASE: {
-        SPEED: 2,
-        HEALTH: { MAX: 20, INVULNERABILITY: 10 },
-        PROJECTILE: { COOLDOWN: 50, SPEED: 6, LIFE: 300, DAMAGE: 2 }
-    },
-    ENEMY_BASE: {
-        SPEED: 2,
-        DAMAGE: 2,
-        HEALTH: { MAX: 10, INVULNERABILITY: 10 },
-        MOVE_CHECK_COOLDOWN: 20
+const CONFIG = {
+    SCREEN_SIZE: { x: canvas.width, y: canvas.height },
+    PLAYER_STATS: { 
+        SIZE: {
+            WIDTH: 40,
+            HEIGHT: 40,},
+        CUBE: {
+            COLOR1: 'red',
+            COLOR2: 'black',
+            LINE_WIDTH: 4,
+        }
+
     }
 };
+function startGame() {
+    console.log('Starting Game');
+    homeScreen.active = false;
+}
+function openSkillMenu() {
+    upgradeMenu.active = !upgradeMenu.active
+}
+function drawText(text,x,y,fontColor = 'white',fontSize = '20px',fontFamily = 'sans-serif',textAlign = 'left',textBaseline = 'middle') {
+    ctx.font = `${fontSize} ${fontFamily}`;
+    ctx.textAlign = textAlign
+    ctx.textBaseline = textBaseline
+    ctx.fillStyle = fontColor
+    ctx.fillText(text,x,y)
+}
 const mouse = {
     "x": 0,
     "y": 0,
@@ -31,84 +40,311 @@ const keys = {
     "a": false,
     "d": false,
 }
-
-class Entity {
-    constructor(config = {"dim": {"height": 10, "width": 10},"pos":{"x": 0,"y":0,"rotX":0,"rotY":0},"v": {"x": 0,"y":0},"color": 'red',"stats": {"speed":2,"damage": 20,"health":{"max": 20,"cur":20,"invunerability":10},"projectyle": {"cooldown":50,"speed":6,"life": 20,"damage":2},},},managerInstance) {
-        this.active = true
-        this.manager = managerInstance
-        this.dim = {"height": config.dim.height, "width": config.dim.width,"hitboxHeight": config.dim.height + GAME_CONFIG.HITBOX_OFFSET, "hitboxWidth": config.dim.width + GAME_CONFIG.HITBOX_OFFSET}
-        this.v = config.v
-        this.pos = config.pos
-        this.color = config.color
-        this.stats = config.stats;
+function work() {
+    console.log('worked')
+}
+class UpgradeMenu {
+    constructor() {
+        this.pos = {"x": 0,"y": 0}
+        this.size = {"width": (CONFIG.SCREEN_SIZE.x / 2),"height":(CONFIG.SCREEN_SIZE.y / 3) * 2}
+        this.color = {"main": "white","border": "black","borderWidth": 4}
+        this.active = false
     }
-    tickUpdate() {
+    updateLoop() {
         if(!this.active) return
-        this.move();
-        this.checkDeath()
-        this.draw();
+        this.drawScreen()
     }
-    collided() {
+    drawScreen() {
+        ctx.fillStyle = this.color.main
+        ctx.fillRect(this.pos.x,this.pos.y,this.size.width,this.size.height)
+
+        ctx.lineWidth = this.color.borderWidth
+        ctx.strokeStyle = this.color.border
+        ctx.strokeRect(this.pos.x,this.pos.y,this.size.width,this.size.height)
+    }
+}
+class HomeScreen {
+    constructor() {
+        this.buttons = {
+            "startGame": new Button({
+                "pos": {
+                    "x": CONFIG.SCREEN_SIZE.x/2,
+                    "y":CONFIG.SCREEN_SIZE.y/2},
+                "size": {
+                    "w": 200,
+                    "h":75},
+                "text":{
+                    "content":"startGame",
+                    "color": "black",
+                    "size":"50px",
+                    "style":"Bebas Neue",},
+                "fill": {
+                    "color": "darkcyan"},
+                "stroke": {
+                    "color": "black",
+                    "lineWidth":4},
+                "active": true, 
+                "action": startGame},),
+
+            "openUpgrades": new Button({
+                "pos": {
+                    "x": CONFIG.SCREEN_SIZE.x -150,
+                    "y": CONFIG.SCREEN_SIZE.y - 150},
+                "size": {
+                    "w": 200,
+                    "h":75},
+                "text":{
+                    "content":"Upgrades",
+                    "color": "black",
+                    "size":"50px",
+                    "style":"Bebas Neue",},
+                "fill": {
+                    "color": "darkcyan"},
+                "stroke": {
+                    "color": "black",
+                    "lineWidth":4},
+                "active": true, 
+                "action": openSkillMenu},)
+        
+        }
+        this.active = true;
+        this.animation = {
+            "cube": {
+                "pos": {
+                    "x": 0,
+                    "y": CONFIG.SCREEN_SIZE.y / 5.5 - CONFIG.PLAYER_STATS.SIZE.HEIGHT - 5 
+                },
+                "v": {
+                    "x": 2,
+                    "y": 0,
+                }
+            },
+            "circle": {
+                "pos": {
+                    "x": - CONFIG.PLAYER_STATS.SIZE.HEIGHT * 6,
+                    "y": CONFIG.SCREEN_SIZE.y / 5.5 - CONFIG.PLAYER_STATS.SIZE.HEIGHT /2,
+                },
+                "v": {
+                    "x": 2,
+                    "y": 0,
+                }
+            }
+        };
+    }
+    updateLoop() {
+        if(!this.active) return
+        this.update()
+        this.drawScreen()
+    }
+    update() {
+        this.animation.cube.pos.x += this.animation.cube.v.x;
+        this.animation.cube.pos.y += this.animation.cube.v.y;
+        if(this.animation.cube.pos.x + CONFIG.PLAYER_STATS.SIZE.WIDTH >= CONFIG.SCREEN_SIZE.x) {
+            this.animation.cube.pos.x = 0
+        }
+        
+        this.animation.circle.pos.x += this.animation.circle.v.x;
+        this.animation.circle.pos.y += this.animation.circle.v.y;
+        if(this.animation.circle.pos.x + CONFIG.PLAYER_STATS.SIZE.HEIGHT >= CONFIG.SCREEN_SIZE.x) {
+            this.animation.circle.pos.x = 0
+        }
+    }
+    drawScreen() {
+        ctx.clearRect(0, 0, CONFIG.SCREEN_SIZE.x, CONFIG.SCREEN_SIZE.y);
+        
+        ctx.fillStyle = 'blue'
+        const CircleX = this.animation.circle.pos.x
+        const CircleY = this.animation.circle.pos.y
+        ctx.beginPath()
+        ctx.arc(CircleX,CircleY,CONFIG.PLAYER_STATS.SIZE.HEIGHT / 2,0,2*Math.PI)
+        ctx.fill()
+
+        const cubeX = this.animation.cube.pos.x;
+        const cubeY = this.animation.cube.pos.y;
+        const cubeW = CONFIG.PLAYER_STATS.SIZE.WIDTH;
+        const cubeH = CONFIG.PLAYER_STATS.SIZE.HEIGHT;
+
+        ctx.fillStyle = CONFIG.PLAYER_STATS.CUBE.COLOR1
+        ctx.fillRect(cubeX, cubeY, cubeW, cubeH)
+
+        ctx.strokeStyle = CONFIG.PLAYER_STATS.CUBE.COLOR2
+        ctx.lineWidth = CONFIG.PLAYER_STATS.CUBE.LINE_WIDTH
+        ctx.strokeRect(cubeX, cubeY, cubeW, cubeH)
+
+        for (const button of Object.values(this.buttons)) {
+            button.draw()
+        }
+        drawText("Cuby Shooter", CONFIG.SCREEN_SIZE.x/2, CONFIG.SCREEN_SIZE.y/4, 'black', '100px', 'Bebas Neue', 'center', 'middle')
+    }
+}
+class Button {
+    constructor(config = {"pos": {"x": 0,"y":0},"size": {"w": 10,"h":10},"text":{"color": "red","size":"100px","style":"Bebas Neue",},"fill": {"color": "red"},"stroke": {"color": "blue","lineWidth":4},"active": true, "action": work},) {
+        this.size = config.size
+        this.pos = {"x": config.pos.x ,"y": config.pos.y }
+        this.fill = config.fill
+        this.stroke = config.stroke
+        this.text = config.text
+        this.action = config.action
+        this.active = config.active
+        this.init()
     }
     draw() {
-        ctx.fillStyle = this.color
+        ctx.strokeStyle = this.stroke.color;
+        ctx.lineWidth = this.stroke.lineWidth;
+        ctx.beginPath();
+        ctx.strokeRect(this.pos.x - this.size.w / 2, this.pos.y - this.size.h / 2, this.size.w, this.size.h);
+        
+        ctx.fillStyle = this.fill.color;
+        ctx.fillRect(this.pos.x - this.size.w / 2, this.pos.y - this.size.h / 2, this.size.w, this.size.h);
+        drawText(this.text.content, this.pos.x, this.pos.y, this.text.color, this.text.size, this.text.style, 'center', 'middle');
+    }
+    init() {
+        canvas.addEventListener('click', (e) => {
+            if (this.active && 
+                (mouse.x > this.pos.x - this.size.w / 2 && mouse.x < this.pos.x + this.size.w / 2) && 
+                (mouse.y > this.pos.y - this.size.h / 2 && mouse.y < this.pos.y + this.size.h / 2)) {
+                
+                this.action();
+            }
+        });
+    }
+}
+class Entity {
+    constructor(stats = {
+        "dim": {
+            "h": 10, 
+            "w": 10},
+        "pos":{
+            "x": 0,
+            "y":0,
+            "rotX":0,
+            "rotY":0},
+        "v": {
+            "x": 0,
+            "y":0},
+        "color": 'red',
+        "move": {
+            "checkCooldown": 10,
+            "speed":2,},
+        "attack": {
+            "damage": 2,
+            "cooldown":2},
+        "health":{
+            "max": 20,
+            "cur":20,
+            "invunerability":10},},) {
+        this.stats = stats;
+        this.active = true
+    }
+    tickUpdate() {
+        this.checkDeath()
+        if(!this.active) return
+        this.move()
+        this.draw()
+    }
+    collided() {
+
+    }
+    gotHit() {
+
+    }
+    draw() {
         ctx.beginPath()
-        ctx.arc(this.pos.x,this.pos.y,this.dim.width,0,2*Math.PI)
+        ctx.fillStyle = this.stats.color
+        ctx.arc(this.stats.pos.x,this.stats.pos.y,this.stats.dim.w/2,0,2*Math.PI)
         ctx.fill()
     }
     move() {
-        const newPosX = this.pos.x + this.v.x
-        const newPosY = this.pos.y + this.v.y
-        if(newPosX - this.dim.hitboxWidth <= 0 || newPosX + this.dim.hitboxWidth >= GAME_CONFIG.BORDER.x) {
-            this.v.x *= -1
+        const newX = this.stats.pos.x + this.stats.v.x
+        const newY = this.stats.pos.y + this.stats.v.y
+        if(newX - this.stats.dim.w / 2< 0 || newX + this.stats.dim.w / 2> CONFIG.SCREEN_SIZE.x) {
+            this.stats.v.x *= -1
         }
-        if(newPosY - this.dim.hitboxWidth <= 0 || newPosY + this.dim.hitboxWidth >= GAME_CONFIG.BORDER.y) {
-            this.v.y *= -1
+        if(newY - this.stats.dim.h / 2< 0 || newY + this.stats.dim.h / 2> CONFIG.SCREEN_SIZE.y) {
+            this.stats.v.y *= -1
         }
-        this.pos.x += this.v.x
-        this.pos.y += this.v.y
+        this.stats.pos.x += this.stats.v.x
+        this.stats.pos.y += this.stats.v.y
+        
     }
-    checkColission(Object2) {
-        const dx = Object2.pos.x - this.pos.x
-        const dy = Object2.pos.y - this.pos.y
-        const d = Math.sqrt(Math.pow(dx,2) + Math.pow(dy,2))
-        if(d <= Object2.dim.hitboxWidth + this.dim.hitboxWidth) {
+    checkCollision(Entity2) {
+        const dx = this.stats.pos.x - Entity2.stats.pos.x
+        const dy = this.stats.pos.y - Entity2.stats.pos.y
+        const d = Math.sqrt(Math.pow(dx,2)+Math.pow(dy,2))
+        if(d <= this.stats.dim.w + Entity2.stats.dim.w ) {
             this.collided()
-            return true;
+            return true
         }
-        return false
     }
     checkDeath() {
-        if(this.type != "Projectyle" && this.stats.health.cur <= 0) {
+        if(this.stats.health && this.stats.health.cur <= 0) {
             this.active = false
         }
     }
 }
-class Player extends Entity{
-    constructor(config = {"dim": {"height": 10, "width": 10},"pos":{"x": 0,"y":0,"rotX":0,"rotY":0},"v": {"x": 0,"y":0},"color": 'red',"stats": {"speed":2,"damage": 20,"health":{"max": 20,"cur":20,"invunerability":10},"projectyle": {"cooldown":50,"speed":6,"life": 20,"damage":2},},},managerInstance) {
-        super(config, managerInstance);
+class Player extends Entity {
+    constructor(stats = {
+        "dim": {
+            "h": 20, 
+            "w": 20},
+        "pos":{
+            "x": 0,
+            "y":0,
+            "rotX":0,
+            "rotY":0},
+        "v": {
+            "x": 0,
+            "y":0},
+        "color": {
+            "body": "darkgray",
+            "border": "black",
+        },
+        "move": {
+            "checkCooldown": 10,
+            "speed":2,},
+        "attack": {
+            "damage": 2,
+            "cooldown":2},
+        "health":{
+            "regenerate": {
+                "cooldown": 300,
+                "by": 2},
+            "max": 20,
+            "cur":20,
+            "invunerability":10},
+        "projectyle": {
+            "penetrate": 2,
+            "cooldown":50,
+            "speed":6,
+            "life": 20,
+            "color": 'black',
+            "damage":2}},) {
+        super(stats)
+        this.projectyleCooldown = this.stats.projectyle.cooldown
         this.invunerable = this.stats.health.invunerability;
-        this.projectylCooldown = this.stats.projectyle.cooldown
-
+        this.regenerationCooldown = this.stats.health.regenerate.cooldown
+        this.name = "Player"
     }
-    shootProjectyles() {
-        const dx = mouse.x - this.pos.x
-        const dy = mouse.y - this.pos.y
-        const radians = Math.atan2(dy, dx)
-        const x = this.pos.x + Math.cos(radians) * 40
-        const y = this.pos.y + Math.sin(radians) * 40
+    shootProjectyle() {
+        const dx = mouse.x -  this.stats.pos.x
+        const dy = mouse.y - this.stats.pos.y
+        const radians = Math.atan2(dy,dx)
+        const x = this.stats.pos.x + Math.cos(radians) * this.stats.dim.w * 1.1
+        const y = this.stats.pos.y + Math.sin(radians) * this.stats.dim.w * 1.1
+        
         ctx.fillStyle = 'rgba(156, 9, 46, 0.5)'
         ctx.beginPath()
         ctx.arc(x, y,15,0,2*Math.PI)
         ctx.fill()
-        if(this.projectylCooldown <= 0) {
-            this.projectylCooldown = this.stats.projectyle.cooldown
+        
+        if(this.projectyleCooldown <= 0) {
+            this.projectyleCooldown = this.stats.projectyle.cooldown
             const vx = Math.cos(radians) * this.stats.projectyle.speed
             const vy = Math.sin(radians) * this.stats.projectyle.speed
-            this.manager.Projectyles.push(new Projectyle({
+            projectiles.push(new Projectyle({
                 "dim": {
-                    "height": 6, 
-                    "width": 6},
+                    "h": 10, 
+                    "w": 10},
                 "pos":{
                     "x": x,
                     "y":y,
@@ -117,238 +353,257 @@ class Player extends Entity{
                 "v": {
                     "x": vx,
                     "y":vy,},
-                "color": 'black',
-                "stats": {
+                "color": this.stats.projectyle.color,
+                "projectyle": {
                     "life":this.stats.projectyle.life,
                     "penetrate":this.stats.projectyle.penetrate,
                     "damage":this.stats.projectyle.damage},}
-                ,this.manager))
+                ,))
         }
     }
     draw() {
-        const x = this.pos.x - this.dim.width;
-        const y = this.pos.y - this.dim.height; 
-        const width = this.dim.width * 2;
-        const height = this.dim.height * 2;
-
-        ctx.fillStyle = "darkgray";
+        const x = this.stats.pos.x - this.stats.dim.w / 2;
+        const y = this.stats.pos.y - this.stats.dim.h / 2; 
+        const width = this.stats.dim.w;
+        const height = this.stats.dim.h;
+        ctx.fillStyle = this.stats.color.body;
         ctx.fillRect(x, y, width, height);
 
-        ctx.strokeStyle = 'black';
+        ctx.strokeStyle = this.stats.color.border;
         ctx.strokeRect(x, y, width, height);
     }
     tickUpdate() {
-        if(this.stats.health.cur <= 0) {
-            this.stats.health.cur = 0
-            this.active = false
-        }
+        if(!this.active) return
+        this.regenerationCooldown -= 1
         this.invunerable -= 1;
-        this.projectylCooldown -= 1;
-        this.handelKeyInput()
-        this.checkAllColl()
-        super.tickUpdate()
-        this.shootProjectyles()
-        drawText(`Health: ${this.stats.health.cur}/${this.stats.health.max}`,10,20)
-    }
-    checkAllColl() {
-        for(let entity of this.manager.Entities) {
-            if(entity === this || !entity.active) {continue} 
-            const collided = this.checkColission(entity)
-            if(collided) {
-                this.hitEntity(entity)
+        this.projectyleCooldown -= 1;
+        if(this.regenerationCooldown <= 0) {
+            this.regenerationCooldown = this.stats.health.regenerate.cooldown
+            if(this.stats.health.cur < this.stats.health.max) {
+                this.stats.health.cur += this.stats.health.regenerate.by
+                if(this.stats.health.cur > this.stats.health.max) {
+                    this.stats.health.cur = this.stats.health.max
+                }
             }
         }
-    }
-    hitEntity(Entity2) {
-        if(this.invunerable <= 0) {
-            this.stats.health.cur -= Entity2.stats.damage
-            this.invunerable = this.stats.health.invunerability;
-        }
+        this.checkDeath()
+        this.handelKeyInput()
+        this.move()
+        this.draw()
+        this.shootProjectyle()
+        drawText(`Health: ${this.stats.health.cur}/${this.stats.health.max}`,10,20) 
     }
     move() {
-        this.v.x *= 0.8;
-        this.v.y *= 0.8;
+        this.stats.v.x *= 0.8;
+        this.stats.v.y *= 0.8;
         super.move()
     }
     handelKeyInput() {
-        if(keys.w) this.v.y -= this.stats.speed
-        if(keys.s) this.v.y += this.stats.speed
-        if(keys.a) this.v.x -= this.stats.speed
-        if(keys.d) this.v.x += this.stats.speed
+        if(keys.w) this.stats.v.y -= this.stats.move.speed
+        if(keys.s) this.stats.v.y += this.stats.move.speed
+        if(keys.a) this.stats.v.x -= this.stats.move.speed
+        if(keys.d) this.stats.v.x += this.stats.move.speed
     }
-    
 }
 class Projectyle extends Entity {
-    constructor(config = {"dim": {"height": 10, "width": 10},"pos":{"x": 0,"y":0,"rotX":0,"rotY":0},"v": {"x": 0,"y":0},"color": 'red',"stats": {"life":300,"penetrate":1,"damage":2},},managerInstance) {
-        super(config, managerInstance);
-        this.type = "Projectyle"; 
+    constructor(stats = {
+                "dim": {
+                    "height": 6, 
+                    "width": 6},
+                "pos":{
+                    "x": 0,
+                    "y":0,
+                    "rotX":0,
+                    "rotY":0},
+                "v": {
+                    "x": 0,
+                    "y":0,},
+                "color": 'black',
+                "projectyle": {
+                    "life":300,
+                    "penetrate":1,
+                    "damage":2},}) {
+        super(stats);
+        this.name = "Projectyle"
     }
     tickUpdate() {
-        this.stats.life -= 1;
-        if(this.stats.life <= 0 || this.stats.penetrate <= 0) {this.active = false}
-        super.tickUpdate()
+        this.stats.projectyle.life -= 1;
+        if(this.stats.projectyle.life <= 0 || this.stats.projectyle.penetrate <= 0) {this.active = false}
+        if(!this.active) return
+        this.move()
+        this.draw()
         this.checkAllColl()
     }
-    move() {
-        this.v.x *= 1.001;
-        this.v.y *= 1.001;
-        super.move()
-    }
     checkAllColl() {
-        for(let entity of this.manager.Entities) {
+        for(let entity of enemies) {
             if(!entity.active) {continue}
-            const collided = this.checkColission(entity)
+            const collided = this.checkCollision(entity)
             if(collided) {
                 this.hitEntity(entity)
             }
         }
     }
     hitEntity(Entity2) {
-        this.stats.penetrate -= 1;
-        if(this.stats.penetrate <= 0) {
+        this.stats.projectyle.penetrate -= 1;
+        if(this.stats.projectyle.penetrate <= 0) {
             this.active = false
         }
-        Entity2.stats.health.cur -= this.stats.damage;
+        Entity2.stats.health.cur -= this.stats.projectyle.damage;
     }
 }
 class Enemy extends Entity {
-    constructor(config = {"dim": {"height": 10, "width": 10},"pos":{"x": 0,"y":0,"rotX":0,"rotY":0},"v": {"x": 0,"y":0},"color": 'red',"stats": {"moveCheckCooldown": 10,"speed":2,"damage": 20,"health":{"max": 20,"cur":20,"invunerability":10},},},managerInstance) {
-        super(config, managerInstance);
-        this.moveCooldown = this.stats.moveCheckCooldown
+        constructor(stats = {
+        "dim": {
+            "h": 10, 
+            "w": 10},
+        "pos":{
+            "x": 0,
+            "y":0,
+            "rotX":0,
+            "rotY":0},
+        "v": {
+            "x": 0,
+            "y":0},
+        "color": 'red',
+        "move": {
+            "checkCooldown": 10,
+            "speed":2,},
+        "attack": {
+            "damage": 2,
+            "cooldown":2},
+        "health":{
+            "max": 20,
+            "cur":20,
+            "invunerability":10},}) {
+        super(stats);
+        this.moveCooldown = this.stats.move.checkCooldown
+        this.attackCooldown = this.stats.attack.cooldown
+        this.name = "Enemy"
     }
     tickUpdate() {
+        this.attackCooldown -= 1;
         this.moveCooldown-= 1;
-        super.tickUpdate()
-        drawText(`Enemy: ${this.stats.health.cur}/${this.stats.health.max}`,this.pos.x- this.dim.hitboxWidth * 2,this.pos.y- this.dim.hitboxHeight * 2)
-    }
-    move() {
         if(this.moveCooldown <= 0) {
-            this.moveCooldown= this.stats.moveCheckCooldown
-            const dx = this.manager.player.pos.x - this.pos.x
-            const dy = this.manager.player.pos.y - this.pos.y
-            const radians = Math.atan2(dy, dx)
-            const vx = Math.cos(radians)  * this.stats.speed
-            const vy = Math.sin(radians) * this.stats.speed
-            this.v.x = vx;
-            this.v.y = vy;
+            this.pathFindToPlayer()
         }
-        super.move()
+        super.tickUpdate()
+        this.checkPlayerCollision()
+        drawText(`${this.name}: ${this.stats.health.cur}/${this.stats.health.max}`,this.stats.pos.x- this.stats.dim.h * 1.1,this.stats.pos.y- this.stats.dim.h * 1.1)
+    }
+    pathFindToPlayer() {
+        this.moveCooldown= this.stats.move.checkCooldown
+        const dx = player.stats.pos.x - this.stats.pos.x
+        const dy = player.stats.pos.y - this.stats.pos.y
+        const radians = Math.atan2(dy, dx)
+        const vx = Math.cos(radians)  * this.stats.move.speed
+        const vy = Math.sin(radians) * this.stats.move.speed
+        this.stats.v.x = vx;
+        this.stats.v.y = vy;
+    }
+    hitPlayer() {
+        player.invunerable = player.stats.health.invunerability
+        player.stats.health.cur -= this.stats.attack.damage
+        
+    }
+    checkPlayerCollision() {
+        if(player.invunerable <= 0 && this.attackCooldown <= 0) {
+            if(this.checkCollision(player)) {
+                this.hitPlayer()
+            }
+        }
     }
 }
-class GameManager {
-    constructor() {
-        this.Wave = 0
-        this.player = new Player({
-            "dim": {
-                "height": 20, 
-                "width": 20},
-            "pos":{
-                "x": GAME_CONFIG.BORDER.x /2,
-                "y":GAME_CONFIG.BORDER.y/2,
-                "rotX":0,
-                "rotY":0},
-            "v": {
-                "x": 0,
-                "y":0},
-            "color": 'blue',
-            "stats": {
-                "speed":GAME_CONFIG.PLAYER_BASE.SPEED,
-                "damage": 2,
-                "health":{
-                    "max": GAME_CONFIG.PLAYER_BASE.HEALTH.MAX,
-                    "cur":GAME_CONFIG.PLAYER_BASE.HEALTH.MAX,
-                    "invunerability":GAME_CONFIG.PLAYER_BASE.HEALTH.INVULNERABILITY},
-                "projectyle": {
-                    "cooldown":GAME_CONFIG.PLAYER_BASE.PROJECTILE.COOLDOWN,
-                    "speed":GAME_CONFIG.PLAYER_BASE.PROJECTILE.SPEED,
-                    "life": GAME_CONFIG.PLAYER_BASE.PROJECTILE.LIFE,
-                    "damage":GAME_CONFIG.PLAYER_BASE.PROJECTILE.DAMAGE,
-                    "penetrate": 1
-                },},}
-            ,this)
-        this.Projectyles = [
-            
-        ]
-        this.Entities = [
-            
-        ]
-        requestAnimationFrame(this.gameLoop)
-    }
-    spawnNewWave() {
-        const health = Math.floor(GAME_CONFIG.ENEMY_BASE.HEALTH.MAX + 2*Math.cbrt(Math.pow(this.Wave,2.5)));
-        const speed = GAME_CONFIG.ENEMY_BASE.SPEED + (0.1 * this.Wave) + (0.01 * Math.pow(this.Wave, 2));
-        const damage = Math.floor((GAME_CONFIG.ENEMY_BASE.DAMAGE + (1 * this.Wave) + (0.3 * Math.pow(this.Wave, 2))));
-        const EnemyCount = Math.ceil(1 + (this.Wave / 5) + (Math.pow(this.Wave, 2) / 200));
-        for(let i = 0; i < EnemyCount; i++) {
-            const x = 100;
-            const y = 100;
-            const size = 20;
-            const color = GAME_CONFIG.ENEMY_COLORS[randInt(0,20)]
-            this.Entities.push(
-                new Enemy({
-                    "dim": {
-                        "height": size, 
-                        "width": size},
-                    "pos":{
-                        "x": x,
-                        "y":y,
-                        "rotX":0,
-                        "rotY":0},
-                    "v": {
-                        "x": 0,
-                        "y":0},
-                    "color": color,
-                    "stats": {
-                        "moveCheckCooldown": GAME_CONFIG.ENEMY_BASE.MOVE_CHECK_COOLDOWN,
-                        "speed":speed,
-                        "damage": damage,
-                        "health":{
-                            "max": health,
-                            "cur": health,
-                            "invunerability": GAME_CONFIG.ENEMY_BASE.MOVE_CHECK_COOLDOWN},
-                        },}
-                    ,this)
-            )
-        }
-        this.Wave += 1
-    }
-    gameLoop = () => {
-        if(gameRunning) {
-            if(!this.player.active) return
-                this.EntityUpdate()
-            }else {
-        }
-        requestAnimationFrame(this.gameLoop)
-    }
-    EntityUpdate() {
-        ctx.clearRect(0,0,GAME_CONFIG.BORDER.x,GAME_CONFIG.BORDER.y)
-        for(let entity of this.Entities) {
-            entity.tickUpdate()
-        }
-        for(let projectyle of this.Projectyles) {
-            projectyle.tickUpdate()
-        }
-        this.Entities = this.Entities.filter(entity => entity.active);
-        this.Projectyles = this.Projectyles.filter(projectyl => projectyl.active);
-        if(this.Entities.length == 0) {
-           this.spawnNewWave()
-        }
-        this.player.tickUpdate()
-    }
-}
-class HomeScreen {
-    constructor() {
-        this.show = true
-    }
-}
-let gameRunning = true
-const waveManager = new GameManager(baseV = {"maxHealth": 4, "speed": 2,"damage":2,"enemyCount":1},playerStats = {"projectyle": {"cooldown":50,"speed":6,"life": 20,"damage":2},"speed":2,"health": 20})
-function gamePaused() {
-    ctx.fillStyle = "rgba(255, 0, 179, 0.005)"
-    ctx.fillRect(0,0,GAME_CONFIG.BORDER.x,GAME_CONFIG.BORDER.y)
+const upgradeMenu = new UpgradeMenu()
+const homeScreen = new HomeScreen()
+let player = new Player({
+        "dim": {
+            "h": 50, 
+            "w": 50},
+        "pos":{
+            "x": 500,
+            "y":500,
+            "rotX":0,
+            "rotY":0},
+        "v": {
+            "x": 0,
+            "y":0},
+        "color": {
+            "body": "darkgray",
+            "border": "black",
+        },
+        "move": {
+            "checkCooldown": 10,
+            "speed":2,},
+        "attack": {
+            "damage": 2,
+            "cooldown":2},
+        "health":{
+            "regenerate": {
+                "cooldown": 300,
+                "by": 2},
+            "max": 20,
+            "cur":20,
+            "invunerability":10},
+        "projectyle": {
+            "penetrate": 1,
+            "cooldown":50,
+            "speed":6,
+            "life": 300,
+            "color": 'black',
+            "damage":2}})
 
-    drawText("Game Paused",GAME_CONFIG.BORDER.x/2,GAME_CONFIG.BORDER.y/2-40, fontColor = 'black', fontSize = '50px', fontFamily = 'sans-serif',textAlign = 'center',textBaseline = 'middle')
-    drawText("click ESC to unPause",GAME_CONFIG.BORDER.x/2,GAME_CONFIG.BORDER.y/2+50, fontColor = 'black', fontSize = '40px', fontFamily = 'sans-serif',textAlign = 'center',textBaseline = 'middle')
+let enemies = [new Enemy({
+        "dim": {
+            "h": 30, 
+            "w": 30},
+        "pos":{
+            "x": 100,
+            "y":100,
+            "rotX":0,
+            "rotY":0},
+        "v": {
+            "x": 0,
+            "y":0},
+        "color": 'red',
+        "move": {
+            "checkCooldown": 10,
+            "speed":2,},
+        "attack": {
+            "damage": 2,
+            "cooldown":2},
+        "health":{
+            "max": 20,
+            "cur":20,
+            "invunerability":10},})]
+let projectiles = []
+function animationLoop() {
+    ctx.clearRect(0,0,CONFIG.SCREEN_SIZE.x,CONFIG.SCREEN_SIZE.y)
+    if(homeScreen.active) {
+        homeScreen.updateLoop()
+        upgradeMenu.updateLoop()
+    }else {
+        for(let enemie of enemies) {
+            enemie.tickUpdate()
+        }
+        for(let projectyl of projectiles) {
+            projectyl.tickUpdate()
+        }
+        player.tickUpdate()
+        enemies = enemies.filter(enemy => enemy.active);
+        projectiles = projectiles.filter(projectyl => projectyl.active);
+        if(!player.active) homeScreen.active = true
+    }
+    requestAnimationFrame(animationLoop)
+}
+canvas.addEventListener('mousemove', (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    mouse.x = x
+    mouse.y = y
+})
+function randInt(min,max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min; 
 }
 document.addEventListener('keydown', (e) => {
     const key = e.key 
@@ -363,20 +618,4 @@ document.addEventListener('keyup', (e) => {
     const key = e.key
     keys[key] = false
 })
-function randInt(min,max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min; 
-}
-function drawText(text, x, y, fontColor = 'white', fontSize = '20px', fontFamily = 'sans-serif',textAlign = 'left',textBaseline = 'middle') {
-    ctx.font = `${fontSize} ${fontFamily}`;
-    ctx.textAlign = textAlign;
-    ctx.textBaseline = textBaseline;
-    ctx.fillStyle = fontColor;
-    ctx.fillText(text, x, y);
-}
-canvas.addEventListener('mousemove', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    mouse.x = x
-    mouse.y = y
-})
+requestAnimationFrame(animationLoop)
