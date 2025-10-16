@@ -44,12 +44,12 @@ function startGame() {
 function openSkillMenu() {
     upgradeMenu.active = !upgradeMenu.active
 }
-function drawText(text,x,y,fontColor = 'white',fontSize = '20px',fontFamily = 'sans-serif',textAlign = 'left',textBaseline = 'middle') {
-    ctx.font = `${fontSize} ${fontFamily}`;
-    ctx.textAlign = textAlign
-    ctx.textBaseline = textBaseline
-    ctx.fillStyle = fontColor
-    ctx.fillText(text,x,y)
+function drawText(config = {text: 'text',x: 0,y: 0,fontColor: 'white',fontSize: '20px',fontFamily: 'sans-serif',textAlign: 'left',textBaseline: 'middle'}) {
+    ctx.font = `${config.fontSize} ${config.fontFamily}`;
+    ctx.textAlign = config.textAlign
+    ctx.textBaseline = config.textBaseline
+    ctx.fillStyle = config.fontColor
+    ctx.fillText(config.text,config.x,config.y)
 }
 const mouse = {
     "x": 0,
@@ -64,28 +64,105 @@ const keys = {
 function work() {
     console.log('worked')
 }
-class UpgradeMenu {
+class Screen {
     constructor() {
-        this.pos = {"x": 0,"y": 0}
-        this.size = {"width": (CONFIG.SCREEN_SIZE.w / 2),"height":(CONFIG.SCREEN_SIZE.h / 3) * 2}
-        this.color = {"main": "white","border": "black","borderWidth": 4}
-        this.active = false
+        this.pos = {x: 0,y: CONFIG.SCREEN_SIZE.h / 2 ,aX: 0,aY: CONFIG.SCREEN_SIZE.h}
+        this.animationSpeed = 10
+        this.size = {w: CONFIG.SCREEN_SIZE.w,h:CONFIG.SCREEN_SIZE.h,aW: CONFIG.SCREEN_SIZE.w,aH:CONFIG.SCREEN_SIZE.h,}
+        this.color = {main: "white",border: "red",lineWidth: 10}
+        this.textDisplays = []
+        this.buttons = []
+        this.active = true
+        this.closing = false
+        this.opening = true
     }
-    updateLoop() {
+    closeScreen() {
+        this.pos.aY = 0
+        this.closing = true
+    }
+    openScreen() {
+        this.pos.aY = CONFIG.SCREEN_SIZE.h
+        this.opening = true
+    }
+    tickUpdate() {
+        ctx.clearRect(0,0,CONFIG.SCREEN_SIZE.w,CONFIG.SCREEN_SIZE.h)
         if(!this.active) return
+        if(this.opening === true) {
+            this.openAnimation()
+        }
+        if(this.closing === true) {
+            this.closeAnimation()
+        }
         this.drawScreen()
+        this.drawElements()
+        this.screenDecoration()
+        requestAnimationFrame(this.tickUpdate.bind(this))
+    }
+    closeAnimation() {
+        this.pos.aY += this.animationSpeed
+        if(this.pos.aY > CONFIG.SCREEN_SIZE.h) {
+            this.active = false
+            this.closing = false
+        }
+    }
+    openAnimation() {
+        if(this.pos.aY > this.pos.y) {
+            this.pos.aY -= this.animationSpeed
+        }else if(this.pos.aY < this.pos.y) {
+            this.pos.aY = this.pos.y
+            this.opening = false
+        }
+    }
+    screenDecoration() {
+
+    }
+    drawElements(){
+        for(let textDisplay of this.textDisplays) {
+            textDisplay.draw(this.pos.aX,this.pos.aY)
+        }
+        for(let button of this.buttons) {
+            button.draw(this.pos.aX,this.pos.aY)
+        }
     }
     drawScreen() {
-        ctx.fillStyle = this.color.main
-        ctx.fillRect(this.pos.x,this.pos.y,this.size.width,this.size.height)
 
-        ctx.lineWidth = this.color.borderWidth
         ctx.strokeStyle = this.color.border
-        ctx.strokeRect(this.pos.x,this.pos.y,this.size.width,this.size.height)
+        ctx.lineWidth = this.color.lineWidth
+        ctx.strokeRect(this.pos.aX,this.pos.aY ,this.size.aW,this.size.aH)
+        
+        ctx.fillStyle = this.color.main
+        ctx.fillRect(this.pos.aX,this.pos.aY ,this.size.aW,this.size.aH)
     }
 }
-class HomeScreen {
+class UpgradeMenu extends Screen {
     constructor() {
+        super()
+        this.textDisplays = [ new Text()]
+        this.buttons = [new Button({"pos": {"x": 0 +200,"y":200 +100},"size": {"w": 200,"h":100},"text":{"color": "black","size":"50px","style":"Bebas Neue","content": "idk"},"fill": {"color": "gray"},"stroke": {"color": "black","lineWidth":10},"active": true, "action": work,"draw": false,"parent": this})]
+        
+    }
+}
+class Text {
+    constructor(config = {text: 'text',x: 20,y: 20,fontColor: 'red',fontSize: '100px',fontFamily: 'sans-serif',textAlign: 'left',textBaseline: 'top'}) {
+        this.config = config
+    }
+    draw(x,y) {
+        drawText({
+            text: this.config.text,
+            x: x + this.config.x,
+            y: y + this.config.y, 
+            fontColor: this.config.fontColor,
+            fontSize: this.config.fontSize,
+            fontFamily: this.config.fontFamily,
+            textAlign: this.config.textAlign,
+            textBaseline: this.config.textBaseline 
+        })
+    }
+} 
+
+class HomeScreen extends Screen{
+    constructor() {
+        super()
         this.buttons = {
             "startGame": new Button({
                 "pos": {
@@ -105,7 +182,8 @@ class HomeScreen {
                     "color": "black",
                     "lineWidth":4},
                 "active": true, 
-                "action": startGame},),
+                "action": startGame,
+                "parent": this},),
 
             "openUpgrades": new Button({
                 "pos": {
@@ -125,7 +203,8 @@ class HomeScreen {
                     "color": "black",
                     "lineWidth":4},
                 "active": true, 
-                "action": openSkillMenu},)
+                "action": openSkillMenu,
+                "parent": this},)
         
         }
         this.active = true;
@@ -199,7 +278,7 @@ class HomeScreen {
     }
 }
 class Button {
-    constructor(config = {"pos": {"x": 0,"y":0},"size": {"w": 10,"h":10},"text":{"color": "red","size":"100px","style":"Bebas Neue",},"fill": {"color": "red"},"stroke": {"color": "blue","lineWidth":4},"active": true, "action": work,"draw": false},) {
+    constructor(config = {"pos": {"x": 0 +200,"y":200 +100},"size": {"w": 200,"h":100},"text":{"color": "black","size":"50px","style":"Bebas Neue","content": "idk"},"fill": {"color": "gray"},"stroke": {"color": "black","lineWidth":10},"active": true, "action": work,"draw": false,"parent": screen},) {
         this.size = config.size
         this.pos = {"x": config.pos.x ,"y": config.pos.y }
         this.fill = config.fill
@@ -207,30 +286,46 @@ class Button {
         this.text = config.text
         this.action = config.action
         this.active = config.active
+        this.parent = config.parent
         if(config.draw) {
             this.draw = config.draw
         }
+        console.log(this.parent)
         this.init()
     }
-    draw() {
+    draw(x,y) {
         ctx.strokeStyle = this.stroke.color;
         ctx.lineWidth = this.stroke.lineWidth;
         ctx.beginPath();
-        ctx.strokeRect(this.pos.x - this.size.w / 2, this.pos.y - this.size.h / 2, this.size.w, this.size.h);
-        
+        ctx.strokeRect(x +this.pos.x - this.size.w / 2, y+this.pos.y - this.size.h / 2, this.size.w, this.size.h);
         ctx.fillStyle = this.fill.color;
-        ctx.fillRect(this.pos.x - this.size.w / 2, this.pos.y - this.size.h / 2, this.size.w, this.size.h);
-        drawText(this.text.content, this.pos.x, this.pos.y, this.text.color, this.text.size, this.text.style, 'center', 'middle');
+        ctx.fillRect(x+this.pos.x - this.size.w / 2, y+this.pos.y - this.size.h / 2, this.size.w, this.size.h);
+        drawText({
+            text: this.text.content,
+            x: x + this.pos.x,     
+            y: y + this.pos.y,    
+            fontColor: this.text.color,
+            fontSize: this.text.size,
+            fontFamily: this.text.style,
+            textAlign: 'center',   
+            textBaseline: 'middle' 
+        });
     }
     init() {
         canvas.addEventListener('click', (e) => {
-            if (this.active && 
-                (mouse.x > this.pos.x - this.size.w / 2 && mouse.x < this.pos.x + this.size.w / 2) && 
-                (mouse.y > this.pos.y - this.size.h / 2 && mouse.y < this.pos.y + this.size.h / 2)) {
+        
+        const absCenterX = this.parent.pos.aX + this.pos.x;
+        const absCenterY = this.parent.pos.aY + this.pos.y;
+        
+        if (this.active && 
+            (mouse.x > absCenterX - this.size.w / 2 && 
+             mouse.x < absCenterX + this.size.w / 2) && 
+            (mouse.y > absCenterY - this.size.h / 2 && 
+             mouse.y < absCenterY + this.size.h / 2)) {
                 
                 this.action();
-            }
-        });
+        }
+    });
     }
 }
 class Entity {
@@ -508,7 +603,12 @@ class Enemy extends Entity {
         }
         super.tickUpdate()
         this.checkPlayerCollision()
-        drawText(`${this.name}: ${this.stats.health.cur}/${this.stats.health.max}`,this.stats.pos.x- this.stats.dim.h * 1.1,this.stats.pos.y- this.stats.dim.h * 1.1)
+        drawText({
+            text: `${this.name}: ${this.stats.health.cur}/${this.stats.health.max}`,
+            x: this.stats.pos.x,
+            y: this.stats.pos.y - this.stats.dim.h / 2 - 10,
+            textAlign: 'center',
+        })
     }
     pathFindToPlayer() {
         this.moveCooldown= this.stats.move.checkCooldown
@@ -658,7 +758,7 @@ function animationLoop() {
     ctx.clearRect(0,0,CONFIG.SCREEN_SIZE.w,CONFIG.SCREEN_SIZE.h)
     if(homeScreen.active) {
         homeScreen.updateLoop()
-        upgradeMenu.updateLoop()
+        upgradeMenu.tickUpdate()
     }else {
         gameManager.tickUpdate()
     }
@@ -687,4 +787,4 @@ document.addEventListener('keyup', (e) => {
     const key = e.key
     keys[key] = false
 })
-requestAnimationFrame(animationLoop)
+    requestAnimationFrame(animationLoop)
