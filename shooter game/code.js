@@ -1,9 +1,9 @@
 const canvas = document.querySelector('#gameScreen')
 canvas.height = window.innerHeight
-canvas.width = window.innerWidth
+canvas.width = window.innerWidth / 6 * 4
 const ctx = canvas.getContext('2d')
 const CONFIG = {
-    SCREEN_SIZE: { x: canvas.width, y: canvas.height },
+    SCREEN_SIZE: { w: canvas.width, h: canvas.height },
     PLAYER_STATS: { 
         SIZE: {
             WIDTH: 40,
@@ -11,13 +11,34 @@ const CONFIG = {
         CUBE: {
             COLOR1: 'red',
             COLOR2: 'black',
-            LINE_WIDTH: 4,
-        }
+            LINE_WIDTH: 1,},
+        MOVE: {
+            SPEED: 10,
+        },
+        HEALTH: {
+            REGENERATE: {
+                COOLDOWN: 300,
+                BY: 2,},
+        MAX: 20,
+        INVUNERABILITY: 10,},
+        ABILITIES: {
+            PROJECTYLE: {
+                PENETRATE: 1,
+                COOLDOWN: 50,
+                SPEED: 12,
+                LIFE: 300,
+                COlOR: "black",
+                DAMAGE: 2,
+            },
+        },
 
-    }
+    },
 };
 function startGame() {
     console.log('Starting Game');
+    gameManager = new GameManager()
+    gameManager.Wave = 0
+    gameManager.nextWave()
     homeScreen.active = false;
 }
 function openSkillMenu() {
@@ -46,7 +67,7 @@ function work() {
 class UpgradeMenu {
     constructor() {
         this.pos = {"x": 0,"y": 0}
-        this.size = {"width": (CONFIG.SCREEN_SIZE.x / 2),"height":(CONFIG.SCREEN_SIZE.y / 3) * 2}
+        this.size = {"width": (CONFIG.SCREEN_SIZE.w / 2),"height":(CONFIG.SCREEN_SIZE.h / 3) * 2}
         this.color = {"main": "white","border": "black","borderWidth": 4}
         this.active = false
     }
@@ -68,8 +89,8 @@ class HomeScreen {
         this.buttons = {
             "startGame": new Button({
                 "pos": {
-                    "x": CONFIG.SCREEN_SIZE.x/2,
-                    "y":CONFIG.SCREEN_SIZE.y/2},
+                    "x": CONFIG.SCREEN_SIZE.w/2,
+                    "y":CONFIG.SCREEN_SIZE.h/2},
                 "size": {
                     "w": 200,
                     "h":75},
@@ -88,8 +109,8 @@ class HomeScreen {
 
             "openUpgrades": new Button({
                 "pos": {
-                    "x": CONFIG.SCREEN_SIZE.x -150,
-                    "y": CONFIG.SCREEN_SIZE.y - 150},
+                    "x": CONFIG.SCREEN_SIZE.w -150,
+                    "y": CONFIG.SCREEN_SIZE.h - 150},
                 "size": {
                     "w": 200,
                     "h":75},
@@ -112,7 +133,7 @@ class HomeScreen {
             "cube": {
                 "pos": {
                     "x": 0,
-                    "y": CONFIG.SCREEN_SIZE.y / 5.5 - CONFIG.PLAYER_STATS.SIZE.HEIGHT - 5 
+                    "y": CONFIG.SCREEN_SIZE.h / 5.5 - CONFIG.PLAYER_STATS.SIZE.HEIGHT - 5 
                 },
                 "v": {
                     "x": 2,
@@ -122,7 +143,7 @@ class HomeScreen {
             "circle": {
                 "pos": {
                     "x": - CONFIG.PLAYER_STATS.SIZE.HEIGHT * 6,
-                    "y": CONFIG.SCREEN_SIZE.y / 5.5 - CONFIG.PLAYER_STATS.SIZE.HEIGHT /2,
+                    "y": CONFIG.SCREEN_SIZE.h / 5.5 - CONFIG.PLAYER_STATS.SIZE.HEIGHT /2,
                 },
                 "v": {
                     "x": 2,
@@ -139,18 +160,18 @@ class HomeScreen {
     update() {
         this.animation.cube.pos.x += this.animation.cube.v.x;
         this.animation.cube.pos.y += this.animation.cube.v.y;
-        if(this.animation.cube.pos.x + CONFIG.PLAYER_STATS.SIZE.WIDTH >= CONFIG.SCREEN_SIZE.x) {
+        if(this.animation.cube.pos.x + CONFIG.PLAYER_STATS.SIZE.WIDTH >= CONFIG.SCREEN_SIZE.w) {
             this.animation.cube.pos.x = 0
         }
         
         this.animation.circle.pos.x += this.animation.circle.v.x;
         this.animation.circle.pos.y += this.animation.circle.v.y;
-        if(this.animation.circle.pos.x + CONFIG.PLAYER_STATS.SIZE.HEIGHT >= CONFIG.SCREEN_SIZE.x) {
+        if(this.animation.circle.pos.x + CONFIG.PLAYER_STATS.SIZE.HEIGHT >= CONFIG.SCREEN_SIZE.w) {
             this.animation.circle.pos.x = 0
         }
     }
     drawScreen() {
-        ctx.clearRect(0, 0, CONFIG.SCREEN_SIZE.x, CONFIG.SCREEN_SIZE.y);
+        ctx.clearRect(0, 0, CONFIG.SCREEN_SIZE.w, CONFIG.SCREEN_SIZE.h);
         
         ctx.fillStyle = 'blue'
         const CircleX = this.animation.circle.pos.x
@@ -174,11 +195,11 @@ class HomeScreen {
         for (const button of Object.values(this.buttons)) {
             button.draw()
         }
-        drawText("Cuby Shooter", CONFIG.SCREEN_SIZE.x/2, CONFIG.SCREEN_SIZE.y/4, 'black', '100px', 'Bebas Neue', 'center', 'middle')
+        drawText("Cuby Shooter", CONFIG.SCREEN_SIZE.w/2, CONFIG.SCREEN_SIZE.h/4, 'black', '100px', 'Bebas Neue', 'center', 'middle')
     }
 }
 class Button {
-    constructor(config = {"pos": {"x": 0,"y":0},"size": {"w": 10,"h":10},"text":{"color": "red","size":"100px","style":"Bebas Neue",},"fill": {"color": "red"},"stroke": {"color": "blue","lineWidth":4},"active": true, "action": work},) {
+    constructor(config = {"pos": {"x": 0,"y":0},"size": {"w": 10,"h":10},"text":{"color": "red","size":"100px","style":"Bebas Neue",},"fill": {"color": "red"},"stroke": {"color": "blue","lineWidth":4},"active": true, "action": work,"draw": false},) {
         this.size = config.size
         this.pos = {"x": config.pos.x ,"y": config.pos.y }
         this.fill = config.fill
@@ -186,6 +207,9 @@ class Button {
         this.text = config.text
         this.action = config.action
         this.active = config.active
+        if(config.draw) {
+            this.draw = config.draw
+        }
         this.init()
     }
     draw() {
@@ -257,10 +281,10 @@ class Entity {
     move() {
         const newX = this.stats.pos.x + this.stats.v.x
         const newY = this.stats.pos.y + this.stats.v.y
-        if(newX - this.stats.dim.w / 2< 0 || newX + this.stats.dim.w / 2> CONFIG.SCREEN_SIZE.x) {
+        if(newX - this.stats.dim.w / 2< 0 || newX + this.stats.dim.w / 2> CONFIG.SCREEN_SIZE.w) {
             this.stats.v.x *= -1
         }
-        if(newY - this.stats.dim.h / 2< 0 || newY + this.stats.dim.h / 2> CONFIG.SCREEN_SIZE.y) {
+        if(newY - this.stats.dim.h / 2< 0 || newY + this.stats.dim.h / 2> CONFIG.SCREEN_SIZE.h) {
             this.stats.v.y *= -1
         }
         this.stats.pos.x += this.stats.v.x
@@ -296,29 +320,25 @@ class Player extends Entity {
             "x": 0,
             "y":0},
         "color": {
-            "body": "darkgray",
-            "border": "black",
-        },
+            "body": CONFIG.PLAYER_STATS.CUBE.COLOR1,
+            "border": CONFIG.PLAYER_STATS.CUBE.COLOR2,
+            "line_width": CONFIG.PLAYER_STATS.CUBE.LINE_WIDTH,},
         "move": {
-            "checkCooldown": 10,
-            "speed":2,},
-        "attack": {
-            "damage": 2,
-            "cooldown":2},
+            "speed": CONFIG.PLAYER_STATS.MOVE.SPEED,},
         "health":{
             "regenerate": {
-                "cooldown": 300,
-                "by": 2},
-            "max": 20,
-            "cur":20,
+                "cooldown": CONFIG.PLAYER_STATS.HEALTH.REGENERATE.COOLDOWN,
+                "by": CONFIG.PLAYER_STATS.HEALTH.REGENERATE.BY},
+            "max": CONFIG.PLAYER_STATS.HEALTH.MAX,
+            "cur": CONFIG.PLAYER_STATS.HEALTH.MAX,
             "invunerability":10},
         "projectyle": {
-            "penetrate": 2,
-            "cooldown":50,
-            "speed":6,
-            "life": 20,
-            "color": 'black',
-            "damage":2}},) {
+            "penetrate": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.PENETRATE,
+            "cooldown": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.COOLDOWN,
+            "speed": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.SPEED,
+            "life": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.LIFE,
+            "color": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.COLOR,
+            "damage": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.DAMAGE}}) {
         super(stats)
         this.projectyleCooldown = this.stats.projectyle.cooldown
         this.invunerable = this.stats.health.invunerability;
@@ -343,8 +363,8 @@ class Player extends Entity {
             const vy = Math.sin(radians) * this.stats.projectyle.speed
             projectiles.push(new Projectyle({
                 "dim": {
-                    "h": 10, 
-                    "w": 10},
+                    "h": 13, 
+                    "w": 13},
                 "pos":{
                     "x": x,
                     "y":y,
@@ -369,6 +389,7 @@ class Player extends Entity {
         ctx.fillStyle = this.stats.color.body;
         ctx.fillRect(x, y, width, height);
 
+        ctx.lineWidth = this.stats.color.line_width
         ctx.strokeStyle = this.stats.color.border;
         ctx.strokeRect(x, y, width, height);
     }
@@ -391,7 +412,6 @@ class Player extends Entity {
         this.move()
         this.draw()
         this.shootProjectyle()
-        drawText(`Health: ${this.stats.health.cur}/${this.stats.health.max}`,10,20) 
     }
     move() {
         this.stats.v.x *= 0.8;
@@ -408,8 +428,8 @@ class Player extends Entity {
 class Projectyle extends Entity {
     constructor(stats = {
                 "dim": {
-                    "height": 6, 
-                    "width": 6},
+                    "height": 20, 
+                    "width": 20},
                 "pos":{
                     "x": 0,
                     "y":0,
@@ -513,52 +533,102 @@ class Enemy extends Entity {
         }
     }
 }
-const upgradeMenu = new UpgradeMenu()
-const homeScreen = new HomeScreen()
-let player = new Player({
+function drawStopGameButton() {
+    console.log('hi')
+    const x1 = CONFIG.SCREEN_SIZE.w / 2 - 20
+    const x2 = CONFIG.SCREEN_SIZE.w / 2 + 20 -15
+    const y = 10
+    ctx.fillStyle = 'green'
+    ctx.fillRect(x1,y,15,40)
+    ctx.fillRect(x2,y,15,40)
+}
+class GameManager {
+    constructor(baseV = {"enemy": {"count": 2,"health": 4,"damage":2}}) {
+        this.Wave = 4
+        this.baseV = baseV
+        player = new Player({
         "dim": {
-            "h": 50, 
-            "w": 50},
+            "h": CONFIG.PLAYER_STATS.SIZE.HEIGHT, 
+            "w": CONFIG.PLAYER_STATS.SIZE.WIDTH},
         "pos":{
-            "x": 500,
-            "y":500,
+            "x": CONFIG.SCREEN_SIZE.w /2,
+            "y": CONFIG.SCREEN_SIZE.h /2,
             "rotX":0,
             "rotY":0},
         "v": {
             "x": 0,
             "y":0},
         "color": {
-            "body": "darkgray",
-            "border": "black",
-        },
+            "body": CONFIG.PLAYER_STATS.CUBE.COLOR1,
+            "border": CONFIG.PLAYER_STATS.CUBE.COLOR2,
+            "line_width": CONFIG.PLAYER_STATS.CUBE.LINE_WIDTH,},
         "move": {
-            "checkCooldown": 10,
-            "speed":2,},
-        "attack": {
-            "damage": 2,
-            "cooldown":2},
+            "speed": CONFIG.PLAYER_STATS.MOVE.SPEED,},
         "health":{
             "regenerate": {
-                "cooldown": 300,
-                "by": 2},
-            "max": 20,
-            "cur":20,
+                "cooldown": CONFIG.PLAYER_STATS.HEALTH.REGENERATE.COOLDOWN,
+                "by": CONFIG.PLAYER_STATS.HEALTH.REGENERATE.BY},
+            "max": CONFIG.PLAYER_STATS.HEALTH.MAX,
+            "cur": CONFIG.PLAYER_STATS.HEALTH.MAX,
             "invunerability":10},
         "projectyle": {
-            "penetrate": 1,
-            "cooldown":50,
-            "speed":6,
-            "life": 300,
-            "color": 'black',
-            "damage":2}})
-
-let enemies = [new Enemy({
+            "penetrate": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.PENETRATE,
+            "cooldown": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.COOLDOWN,
+            "speed": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.SPEED,
+            "life": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.LIFE,
+            "color": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.COlOR,
+            "damage": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.DAMAGE}
+        })
+        this.button = new Button({pos: {x: CONFIG.SCREEN_SIZE.w / 2,y: 0 + 50}, size: {w:40,h:40},active: true,"action": openSkillMenu,"draw": drawStopGameButton})
+        enemies = []
+        projectiles = []
+    }
+    tickUpdate() {
+        this.entityUpdate()
+        drawText(`Wave: ${this.Wave + 1}`, CONFIG.SCREEN_SIZE.w -10, 10, 'white', '20px', 'sans-serif', 'right', 'top') 
+        drawText(`Health: ${player.stats.health.cur}/${player.stats.health.max}`,10,20) 
+        this.button.draw()
+        if(!player.active) homeScreen.active = true
+        if(enemies.length <= 0) {
+            this.Wave += 1
+            this.nextWave()
+        }
+    }
+    entityUpdate() {
+        player.tickUpdate()
+        for(let enemie of enemies) {
+            enemie.tickUpdate()
+        }
+        for(let projectyl of projectiles) {
+            projectyl.tickUpdate()
+        }
+        enemies = enemies.filter(enemy => enemy.active);
+        projectiles = projectiles.filter(projectyl => projectyl.active);
+    }
+    nextWave() {
+        const baseGraph = Math.floor(Math.pow(this.Wave,0.7))
+        const EnemyCount = baseGraph + this.baseV.enemy.count
+        const EnemyHealth = 2*baseGraph + this.baseV.enemy.health
+        const EnemyDAMAGE = baseGraph + this.baseV.enemy.damage
+        console.log(this.Wave)
+        for(let i = 0; i < EnemyCount; i++) {
+            const side = Math.random() < 0.5 ? true : false
+            let x;
+            let y;
+            if(side) {
+                x = Math.random() < 0.5 ? CONFIG.SCREEN_SIZE.w - 60 : 0 + 60
+                y = randInt(60,CONFIG.SCREEN_SIZE.h)
+            }else {
+                y = Math.random() < 0.5 ? CONFIG.SCREEN_SIZE.h - 60 : 0 + 60
+                x = randInt(60,CONFIG.SCREEN_SIZE.w)
+            }
+            enemies.push(new Enemy({
         "dim": {
             "h": 30, 
             "w": 30},
         "pos":{
-            "x": 100,
-            "y":100,
+            "x": x,
+            "y":y,
             "rotX":0,
             "rotY":0},
         "v": {
@@ -569,29 +639,28 @@ let enemies = [new Enemy({
             "checkCooldown": 10,
             "speed":2,},
         "attack": {
-            "damage": 2,
+            "damage": EnemyDAMAGE,
             "cooldown":2},
         "health":{
-            "max": 20,
-            "cur":20,
-            "invunerability":10},})]
+            "max": EnemyHealth,
+            "cur":EnemyHealth,
+            "invunerability":10}}))
+        }
+    }
+}
+const upgradeMenu = new UpgradeMenu()
+const homeScreen = new HomeScreen()
+let player;
+let gameManager;
+let enemies = []
 let projectiles = []
 function animationLoop() {
-    ctx.clearRect(0,0,CONFIG.SCREEN_SIZE.x,CONFIG.SCREEN_SIZE.y)
+    ctx.clearRect(0,0,CONFIG.SCREEN_SIZE.w,CONFIG.SCREEN_SIZE.h)
     if(homeScreen.active) {
         homeScreen.updateLoop()
         upgradeMenu.updateLoop()
     }else {
-        for(let enemie of enemies) {
-            enemie.tickUpdate()
-        }
-        for(let projectyl of projectiles) {
-            projectyl.tickUpdate()
-        }
-        player.tickUpdate()
-        enemies = enemies.filter(enemy => enemy.active);
-        projectiles = projectiles.filter(projectyl => projectyl.active);
-        if(!player.active) homeScreen.active = true
+        gameManager.tickUpdate()
     }
     requestAnimationFrame(animationLoop)
 }
