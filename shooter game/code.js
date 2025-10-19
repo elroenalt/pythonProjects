@@ -1,19 +1,21 @@
 const canvas = document.querySelector('#gameScreen')
 canvas.height = window.innerHeight
-canvas.width = window.innerWidth / 6 * 4
+canvas.width = window.innerWidth
 const ctx = canvas.getContext('2d')
+const SM = 1.2
 const CONFIG = {
     SCREEN_SIZE: { w: canvas.width, h: canvas.height },
+    GAME_SCREEN: {w: 800,h:800,x:  canvas.width/2 - 800 / 2, y: canvas.height/2 - 800 / 2},
     PLAYER_STATS: { 
         SIZE: {
-            WIDTH: 40,
-            HEIGHT: 40,},
+            WIDTH: 40 * SM,
+            HEIGHT: 40 * SM,},
         CUBE: {
             COLOR1: 'red',
             COLOR2: 'black',
             LINE_WIDTH: 1,},
         MOVE: {
-            SPEED: 10,
+            SPEED: 8,
         },
         HEALTH: {
             REGENERATE: {
@@ -25,18 +27,35 @@ const CONFIG = {
             PROJECTYLE: {
                 PENETRATE: 1,
                 COOLDOWN: 50,
-                SPEED: 12,
+                SPEED: 10,
                 LIFE: 300,
                 COlOR: "black",
                 DAMAGE: 2,
             },
         },
-
     },
+    ENEMY_STATS: {
+        SIZE: {
+            WIDTH: 30 * SM,
+            HEIGHT: 30 * SM,
+        },
+        MOVE: {
+            SPEED: 2.5,
+            CHECKCOOLDOWN: 10,
+        },
+        ATTACK: {
+            DAMAGE: 2,
+            COOLDOWN: 2,
+        },
+        HEALTH: {
+            MAX: 4,
+            INVUNERABILITY: 10
+        }
+    }
 };
 function startGame() {
     console.log('Starting Game');
-    gameManager = new GameManager()
+    gameManager = new GameManager({"enemy": {"count": 2,"health":  CONFIG.ENEMY_STATS.HEALTH.MAX,"damage": CONFIG.ENEMY_STATS.ATTACK.DAMAGE}})
     gameManager.Wave = 0
     gameManager.nextWave()
     homeScreen.active = false;
@@ -137,11 +156,12 @@ class Screen {
 class UpgradeMenu extends Screen {
     constructor() {
         super()
+        this.pos = {x: 0,y: CONFIG.SCREEN_SIZE.h/2 ,aX: 0,aY: CONFIG.SCREEN_SIZE.h}
         this.size = {w:CONFIG.SCREEN_SIZE.w,h:(CONFIG.SCREEN_SIZE.w/5 ) / 5 * 4,aW: CONFIG.SCREEN_SIZE.w, aH:(CONFIG.SCREEN_SIZE.w/5 )*4}
         this.textDisplays = [ new Text()]
-        this.buttons = [new Button({"pos": {"x": CONFIG.SCREEN_SIZE.w - 200,"y":CONFIG.SCREEN_SIZE.h/2},"size": {"w": 200,"h":100},"text":{"color": "black","size":"50px","style":"Bebas Neue","content": "idk"},"fill": {"color": "gray"},"stroke": {"color": "black","lineWidth":10},"active": true, "action": () => openSkillMenu(true),"draw": false,"parent": this})]
+        this.buttons = [new Button({"pos": {"x": CONFIG.SCREEN_SIZE.w - 200,"y":0},"size": {"w": 200,"h":100},"text":{"color": "black","size":"50px","style":"monospace","content": "v"},"fill": {"color": "darkslategray"},"stroke": {"color": "darkcyan","lineWidth":10},"active": true, "action": () => openSkillMenu(true),"draw": false,"parent": this})]
         this.size = {w: CONFIG.SCREEN_SIZE.w,h:CONFIG.SCREEN_SIZE.h,aW: CONFIG.SCREEN_SIZE.w,aH:CONFIG.SCREEN_SIZE.h,}
-        this.color = {main: "white",border: "red",lineWidth: 10}
+        this.color = {main: "darkslategray",border: "darkcyan",lineWidth: 20}
     }
 }
 class Text {
@@ -168,7 +188,7 @@ class HomeScreen {
             "startGame": new Button({
                 "pos": {
                     "x": CONFIG.SCREEN_SIZE.w/2,
-                    "y":CONFIG.SCREEN_SIZE.h/2},
+                    "y":CONFIG.SCREEN_SIZE.h/2 - 90},
                 "size": {
                     "w": 200,
                     "h":75},
@@ -385,10 +405,10 @@ class Entity {
     move() {
         const newX = this.stats.pos.x + this.stats.v.x
         const newY = this.stats.pos.y + this.stats.v.y
-        if(newX - this.stats.dim.w / 2< 0 || newX + this.stats.dim.w / 2> CONFIG.SCREEN_SIZE.w) {
+        if(newX - this.stats.dim.w / 2 < CONFIG.GAME_SCREEN.x || newX + this.stats.dim.w / 2> CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w ) {
             this.stats.v.x *= -1
         }
-        if(newY - this.stats.dim.h / 2< 0 || newY + this.stats.dim.h / 2> CONFIG.SCREEN_SIZE.h) {
+        if(newY - this.stats.dim.h / 2< CONFIG.GAME_SCREEN.y || newY + this.stats.dim.h / 2> CONFIG.GAME_SCREEN.y + CONFIG.GAME_SCREEN.h) {
             this.stats.v.y *= -1
         }
         this.stats.pos.x += this.stats.v.x
@@ -404,9 +424,13 @@ class Entity {
             return true
         }
     }
+    onDeath() {
+
+    }
     checkDeath() {
         if(this.stats.health && this.stats.health.cur <= 0) {
             this.active = false
+            this.onDeath()
         }
     }
 }
@@ -436,6 +460,7 @@ class Player extends Entity {
             "max": CONFIG.PLAYER_STATS.HEALTH.MAX,
             "cur": CONFIG.PLAYER_STATS.HEALTH.MAX,
             "invunerability":10},
+        "coins": 0,
         "projectyle": {
             "penetrate": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.PENETRATE,
             "cooldown": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.COOLDOWN,
@@ -644,19 +669,109 @@ class Enemy extends Entity {
             }
         }
     }
+    onDeath() {
+        items.push(new Coin({
+                "dim": {
+                    "h": 20 * SM, 
+                    "w": 20 * SM},
+                "pos":{
+                    "x": this.stats.pos.x,
+                    "y": this.stats.pos.y,
+                    "rotX":0,
+                    "rotY":0},
+                "v": {
+                    "x": 0,
+                    "y": 0,},
+                "color": "gold",
+                "value": 200}))
+    }
 }
-function drawStopGameButton() {
-    const x1 = CONFIG.SCREEN_SIZE.w / 2 - 20
-    const x2 = CONFIG.SCREEN_SIZE.w / 2 + 20 -15
-    const y = 10
-    ctx.fillStyle = 'green'
-    ctx.fillRect(x1,y,15,40)
-    ctx.fillRect(x2,y,15,40)
+class Magnet extends Entity {
+    constructor(stats = {
+                "dim": {
+                    "h": 20, 
+                    "w": 20},
+                "pos":{
+                    "x": 0,
+                    "y": 0,
+                    "rotX":0,
+                    "rotY":0},
+                "v": {
+                    "x": 0,
+                    "y": 0,},
+                "color": "brown",}) {
+        super(stats)
+    }
+    tickUpdate() {
+        if(!this.active) return
+        this.draw()
+        this.checkPlayerCollision()
+    }
+    hitPlayer() {
+    }
+}
+class Coin extends Entity {
+    constructor(stats = {
+                "dim": {
+                    "h": 20, 
+                    "w": 20},
+                "pos":{
+                    "x": 0,
+                    "y": 0,
+                    "rotX":0,
+                    "rotY":0},
+                "v": {
+                    "x": 0,
+                    "y": 0,},
+                "color": "black",
+                "value": 200}) {
+        super(stats)
+    }
+    tickUpdate() {
+        if(!this.active) return
+        this.draw()
+        this.checkPlayerCollision()
+    }
+    draw() {
+        super.draw()
+        drawText({
+            text: "$",
+            x: this.stats.pos.x,
+            y: this.stats.pos.y,
+            fontColor: 'white', 
+            fontSize: '20px', 
+            fontFamily: 'Bebas Neue', 
+            textAlign: 'center', 
+            textBaseline: 'middle'
+        })
+        drawText({
+            text: `${this.stats.value}$`,
+            x: this.stats.pos.x,
+            y: this.stats.pos.y - this.stats.dim.h / 2 - 10,
+            fontColor: 'black', 
+            fontSize: '20px', 
+            fontFamily: 'Bebas Neue', 
+            textAlign: 'center', 
+            textBaseline: 'middle'
+        })
+    }
+    hitPlayer() {
+        player.stats.coins += this.stats.value
+        this.stats.value = 0;
+    }
+    checkPlayerCollision() {
+        if(this.checkCollision(player)) {
+            this.active = false
+            this.hitPlayer()
+        }
+    }
 }
 class GameManager {
-    constructor(baseV = {"enemy": {"count": 2,"health": 4,"damage":2}}) {
+    constructor(baseV = {"enemy": {"count": 2,"health":  CONFIG.ENEMY_STATS.HEALTH.MAX,"damage": CONFIG.ENEMY_STATS.ATTACK.DAMAGE}}) {
+        this.pos = {x: 0,y:0,aX:0,aY:0}
         this.Wave = 4
         this.baseV = baseV
+        this.waveCooldown = 300
         player = new Player({
         "dim": {
             "h": CONFIG.PLAYER_STATS.SIZE.HEIGHT, 
@@ -682,6 +797,7 @@ class GameManager {
             "max": CONFIG.PLAYER_STATS.HEALTH.MAX,
             "cur": CONFIG.PLAYER_STATS.HEALTH.MAX,
             "invunerability":10},
+        "coins": 20,
         "projectyle": {
             "penetrate": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.PENETRATE,
             "cooldown": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.COOLDOWN,
@@ -690,16 +806,60 @@ class GameManager {
             "color": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.COlOR,
             "damage": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.DAMAGE}
         })
-        this.button = new Button({pos: {x: CONFIG.SCREEN_SIZE.w / 2,y: 0 + 50}, size: {w:40,h:40},active: true,"action": openSkillMenu,"draw": drawStopGameButton})
+        this.button = new Button({
+            pos: {
+                x: CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w / 2,
+                y: CONFIG.GAME_SCREEN.y + 10}, 
+            size: {w:40,h:30},
+            active: true,
+            "action": () => {
+                gameRunning = !gameRunning
+            },
+            "draw": () => {
+                ctx.fillRect(CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w / 2,CONFIG.GAME_SCREEN.y + 9,40,32)
+                ctx.fillStyle = 'darkgreen'
+                if(gameRunning) {
+                    const x1 = CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w / 2 
+                    const x2 = CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w / 2 + 40 -15
+                    const y = CONFIG.GAME_SCREEN.y + 10
+                    ctx.fillRect(x1,y,15,30)
+                    ctx.fillRect(x2,y,15,30)
+                }else {
+                    const x = CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w / 2 + 5
+                    const x2 = CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w / 2 + 30 + 5
+                    const y = CONFIG.GAME_SCREEN.y + 10
+                    const y2 = CONFIG.GAME_SCREEN.y + 10 + 30 / 2
+                    const y3 = CONFIG.GAME_SCREEN.y + 10 + 30
+                    ctx.beginPath() 
+                    ctx.moveTo(x,y)
+                    ctx.lineTo(x2,y2)
+                    ctx.lineTo(x,y3)
+                    ctx.lineTo(x,y)
+                    ctx.fill()
+                }
+            },
+            "parent":this})
         enemies = []
         projectiles = []
     }
     tickUpdate() {
+        ctx.fillStyle = "darkgrey"
+        this.button.draw()
+        if(!gameRunning) {
+            return
+        }
+        ctx.clearRect(0,0,CONFIG.SCREEN_SIZE.w,CONFIG.SCREEN_SIZE.h)
+        ctx.lineWidth = 10
+        ctx.fillStyle = "black"
+        ctx.fillStyle = "darkgrey"
+        ctx.strokeRect(CONFIG.GAME_SCREEN.x,CONFIG.GAME_SCREEN.y,CONFIG.GAME_SCREEN.w,CONFIG.GAME_SCREEN.h)
+        ctx.fillRect(CONFIG.GAME_SCREEN.x,CONFIG.GAME_SCREEN.y,CONFIG.GAME_SCREEN.w,CONFIG.GAME_SCREEN.h)
+        this.button.draw()
         this.entityUpdate()
         drawText({
             text: `Wave: ${this.Wave + 1}`,
-            x: CONFIG.SCREEN_SIZE.w -10, 
-            y: 10, 
+            x: CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w -10, 
+            y: CONFIG.GAME_SCREEN.y + 10, 
             fontColor: 'white', 
             fontSize: '20px', 
             fontFamily: 'sans-serif', 
@@ -707,31 +867,48 @@ class GameManager {
             textBaseline: 'top'
         })
         drawText({
-            text: `Health: ${player.stats.health.cur}/${player.stats.health.max}`, 
-            x: 10, 
-            y: 10, 
+            text: `Coins: ${player.stats.coins}$`, 
+            x: CONFIG.GAME_SCREEN.x  + 10, 
+            y: CONFIG.GAME_SCREEN.y + 50, 
             fontColor: 'white', 
             fontSize: '20px', 
             fontFamily: 'sans-serif', 
             textAlign: 'left', 
             textBaseline: 'top'
         })
-        this.button.draw()
+        drawText({
+            text: `Health: ${player.stats.health.cur}/${player.stats.health.max}`, 
+            x: CONFIG.GAME_SCREEN.x  + 10, 
+            y: CONFIG.GAME_SCREEN.y + 10, 
+            fontColor: 'white', 
+            fontSize: '20px', 
+            fontFamily: 'sans-serif', 
+            textAlign: 'left', 
+            textBaseline: 'top'
+        })
         if(!player.active) homeScreen.active = true
         if(enemies.length <= 0) {
-            this.Wave += 1
-            this.nextWave()
+            this.waveCooldown -= 1
+            if(this.waveCooldown <= 0) {
+                this.waveCooldown = 300
+                this.Wave += 1
+                this.nextWave()
+            }
         }
     }
     entityUpdate() {
-        player.tickUpdate()
+        for(let coin of items) {
+            coin.tickUpdate()
+        }
         for(let enemie of enemies) {
             enemie.tickUpdate()
         }
         for(let projectyl of projectiles) {
             projectyl.tickUpdate()
         }
+        player.tickUpdate()
         enemies = enemies.filter(enemy => enemy.active);
+        items = items.filter(coin => coin.active);
         projectiles = projectiles.filter(projectyl => projectyl.active);
     }
     nextWave() {
@@ -744,16 +921,16 @@ class GameManager {
             let x;
             let y;
             if(side) {
-                x = Math.random() < 0.5 ? CONFIG.SCREEN_SIZE.w - 60 : 0 + 60
-                y = randInt(60,CONFIG.SCREEN_SIZE.h)
+                x = Math.random() < 0.5 ? CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w - 60 : CONFIG.GAME_SCREEN.x + 60
+                y = randInt(CONFIG.GAME_SCREEN.y + 60, CONFIG.GAME_SCREEN.y + CONFIG.GAME_SCREEN.h - 60)
             }else {
-                y = Math.random() < 0.5 ? CONFIG.SCREEN_SIZE.h - 60 : 0 + 60
-                x = randInt(60,CONFIG.SCREEN_SIZE.w)
+                y = Math.random() < 0.5 ? CONFIG.GAME_SCREEN.y + CONFIG.GAME_SCREEN.h - 60 : CONFIG.GAME_SCREEN.y + 60
+                x = randInt(CONFIG.GAME_SCREEN.x + 60, CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w - 60)
             }
             enemies.push(new Enemy({
         "dim": {
-            "h": 30, 
-            "w": 30},
+            "h": CONFIG.ENEMY_STATS.SIZE.HEIGHT, 
+            "w": CONFIG.ENEMY_STATS.SIZE.WIDTH},
         "pos":{
             "x": x,
             "y":y,
@@ -764,30 +941,33 @@ class GameManager {
             "y":0},
         "color": 'red',
         "move": {
-            "checkCooldown": 10,
-            "speed":2,},
+            "checkCooldown": CONFIG.ENEMY_STATS.MOVE.CHECKCOOLDOWN,
+            "speed": CONFIG.ENEMY_STATS.MOVE.SPEED,},
         "attack": {
             "damage": EnemyDAMAGE,
             "cooldown":2},
         "health":{
             "max": EnemyHealth,
             "cur":EnemyHealth,
-            "invunerability":10}}))
+            "invunerability": CONFIG.ENEMY_STATS.HEALTH.INVUNERABILITY}}))
         }
     }
 }
 const upgradeMenu = new UpgradeMenu()
 const homeScreen = new HomeScreen()
+let magnet = false
+let gameRunning = true
 let player;
 let gameManager;
 let enemies = []
 let projectiles = []
+let items = []
 function animationLoop() {
-    ctx.clearRect(0,0,CONFIG.SCREEN_SIZE.w,CONFIG.SCREEN_SIZE.h)
     if(homeScreen.active) {
+        ctx.clearRect(0,0,CONFIG.SCREEN_SIZE.w,CONFIG.SCREEN_SIZE.h)
         homeScreen.updateLoop()
         upgradeMenu.tickUpdate()
-    }else {
+    }else{
         gameManager.tickUpdate()
     }
     requestAnimationFrame(animationLoop)
@@ -806,7 +986,6 @@ document.addEventListener('keydown', (e) => {
     const key = e.key 
     if(e.key === 'Escape') {
         gameRunning = !gameRunning
-        gamePaused()
         return
     }
     keys[key] = true
@@ -815,4 +994,4 @@ document.addEventListener('keyup', (e) => {
     const key = e.key
     keys[key] = false
 })
-    requestAnimationFrame(animationLoop)
+requestAnimationFrame(animationLoop)
