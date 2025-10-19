@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Webcam detection</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd@2.2.2/dist/coco-ssd.min.js"></script>
+    <style>
+        body {text-align: center}
+        canvas {position: absolute;left:0;right:0;}
+    </style>
+</head>
+<body>
+    <video id="webcam" width="600" height="450" autoplay></video>
+    <canvas id="canvas" width="600" height="450"></canvas>
+
+    <button id="start-btn">Start Listening</button>
+    <div id="status">Click 'Start Listening'</div>
+    <div id="transcript-output"></div>
+    <script src="app.js"></script>
+</body>
+</html>

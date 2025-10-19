@@ -41,8 +41,10 @@ function startGame() {
     gameManager.nextWave()
     homeScreen.active = false;
 }
-function openSkillMenu() {
-    upgradeMenu.active = !upgradeMenu.active
+function openSkillMenu(open) {
+    upgradeMenu.opening = open ? false : true
+    upgradeMenu.closing = open ? true : false
+    upgradeMenu.active = true
 }
 function drawText(config = {text: 'text',x: 0,y: 0,fontColor: 'white',fontSize: '20px',fontFamily: 'sans-serif',textAlign: 'left',textBaseline: 'middle'}) {
     ctx.font = `${config.fontSize} ${config.fontFamily}`;
@@ -72,9 +74,9 @@ class Screen {
         this.color = {main: "white",border: "red",lineWidth: 10}
         this.textDisplays = []
         this.buttons = []
-        this.active = true
+        this.active = false
         this.closing = false
-        this.opening = true
+        this.opening = false
     }
     closeScreen() {
         this.pos.aY = 0
@@ -85,7 +87,6 @@ class Screen {
         this.opening = true
     }
     tickUpdate() {
-        ctx.clearRect(0,0,CONFIG.SCREEN_SIZE.w,CONFIG.SCREEN_SIZE.h)
         if(!this.active) return
         if(this.opening === true) {
             this.openAnimation()
@@ -96,7 +97,6 @@ class Screen {
         this.drawScreen()
         this.drawElements()
         this.screenDecoration()
-        requestAnimationFrame(this.tickUpdate.bind(this))
     }
     closeAnimation() {
         this.pos.aY += this.animationSpeed
@@ -137,9 +137,11 @@ class Screen {
 class UpgradeMenu extends Screen {
     constructor() {
         super()
+        this.size = {w:CONFIG.SCREEN_SIZE.w,h:(CONFIG.SCREEN_SIZE.w/5 ) / 5 * 4,aW: CONFIG.SCREEN_SIZE.w, aH:(CONFIG.SCREEN_SIZE.w/5 )*4}
         this.textDisplays = [ new Text()]
-        this.buttons = [new Button({"pos": {"x": 0 +200,"y":200 +100},"size": {"w": 200,"h":100},"text":{"color": "black","size":"50px","style":"Bebas Neue","content": "idk"},"fill": {"color": "gray"},"stroke": {"color": "black","lineWidth":10},"active": true, "action": work,"draw": false,"parent": this})]
-        
+        this.buttons = [new Button({"pos": {"x": CONFIG.SCREEN_SIZE.w - 200,"y":CONFIG.SCREEN_SIZE.h/2},"size": {"w": 200,"h":100},"text":{"color": "black","size":"50px","style":"Bebas Neue","content": "idk"},"fill": {"color": "gray"},"stroke": {"color": "black","lineWidth":10},"active": true, "action": () => openSkillMenu(true),"draw": false,"parent": this})]
+        this.size = {w: CONFIG.SCREEN_SIZE.w,h:CONFIG.SCREEN_SIZE.h,aW: CONFIG.SCREEN_SIZE.w,aH:CONFIG.SCREEN_SIZE.h,}
+        this.color = {main: "white",border: "red",lineWidth: 10}
     }
 }
 class Text {
@@ -158,11 +160,10 @@ class Text {
             textBaseline: this.config.textBaseline 
         })
     }
-} 
-
-class HomeScreen extends Screen{
+}
+class HomeScreen {
     constructor() {
-        super()
+        this.pos = {x:0,y:0,aX:0,aY:0}
         this.buttons = {
             "startGame": new Button({
                 "pos": {
@@ -272,9 +273,18 @@ class HomeScreen extends Screen{
         ctx.strokeRect(cubeX, cubeY, cubeW, cubeH)
 
         for (const button of Object.values(this.buttons)) {
-            button.draw()
+            button.draw(0,0)
         }
-        drawText("Cuby Shooter", CONFIG.SCREEN_SIZE.w/2, CONFIG.SCREEN_SIZE.h/4, 'black', '100px', 'Bebas Neue', 'center', 'middle')
+        drawText({
+            text: "Cuby Shooter", 
+            x: CONFIG.SCREEN_SIZE.w/2, 
+            y: CONFIG.SCREEN_SIZE.h/4, 
+            fontColor: 'black', 
+            fontSize: '100px', 
+            fontFamily: 'Bebas Neue', 
+            textAlign: 'center', 
+            textBaseline: 'middle'
+        })
     }
 }
 class Button {
@@ -290,7 +300,6 @@ class Button {
         if(config.draw) {
             this.draw = config.draw
         }
-        console.log(this.parent)
         this.init()
     }
     draw(x,y) {
@@ -390,7 +399,7 @@ class Entity {
         const dx = this.stats.pos.x - Entity2.stats.pos.x
         const dy = this.stats.pos.y - Entity2.stats.pos.y
         const d = Math.sqrt(Math.pow(dx,2)+Math.pow(dy,2))
-        if(d <= this.stats.dim.w + Entity2.stats.dim.w ) {
+        if(d <= this.stats.dim.w / 2 + Entity2.stats.dim.w / 2) {
             this.collided()
             return true
         }
@@ -607,7 +616,11 @@ class Enemy extends Entity {
             text: `${this.name}: ${this.stats.health.cur}/${this.stats.health.max}`,
             x: this.stats.pos.x,
             y: this.stats.pos.y - this.stats.dim.h / 2 - 10,
-            textAlign: 'center',
+            fontColor: 'black', 
+            fontSize: '20px', 
+            fontFamily: 'Bebas Neue', 
+            textAlign: 'center', 
+            textBaseline: 'middle'
         })
     }
     pathFindToPlayer() {
@@ -623,7 +636,6 @@ class Enemy extends Entity {
     hitPlayer() {
         player.invunerable = player.stats.health.invunerability
         player.stats.health.cur -= this.stats.attack.damage
-        
     }
     checkPlayerCollision() {
         if(player.invunerable <= 0 && this.attackCooldown <= 0) {
@@ -634,7 +646,6 @@ class Enemy extends Entity {
     }
 }
 function drawStopGameButton() {
-    console.log('hi')
     const x1 = CONFIG.SCREEN_SIZE.w / 2 - 20
     const x2 = CONFIG.SCREEN_SIZE.w / 2 + 20 -15
     const y = 10
@@ -685,8 +696,26 @@ class GameManager {
     }
     tickUpdate() {
         this.entityUpdate()
-        drawText(`Wave: ${this.Wave + 1}`, CONFIG.SCREEN_SIZE.w -10, 10, 'white', '20px', 'sans-serif', 'right', 'top') 
-        drawText(`Health: ${player.stats.health.cur}/${player.stats.health.max}`,10,20) 
+        drawText({
+            text: `Wave: ${this.Wave + 1}`,
+            x: CONFIG.SCREEN_SIZE.w -10, 
+            y: 10, 
+            fontColor: 'white', 
+            fontSize: '20px', 
+            fontFamily: 'sans-serif', 
+            textAlign: 'right', 
+            textBaseline: 'top'
+        })
+        drawText({
+            text: `Health: ${player.stats.health.cur}/${player.stats.health.max}`, 
+            x: 10, 
+            y: 10, 
+            fontColor: 'white', 
+            fontSize: '20px', 
+            fontFamily: 'sans-serif', 
+            textAlign: 'left', 
+            textBaseline: 'top'
+        })
         this.button.draw()
         if(!player.active) homeScreen.active = true
         if(enemies.length <= 0) {
@@ -710,7 +739,6 @@ class GameManager {
         const EnemyCount = baseGraph + this.baseV.enemy.count
         const EnemyHealth = 2*baseGraph + this.baseV.enemy.health
         const EnemyDAMAGE = baseGraph + this.baseV.enemy.damage
-        console.log(this.Wave)
         for(let i = 0; i < EnemyCount; i++) {
             const side = Math.random() < 0.5 ? true : false
             let x;
