@@ -3,7 +3,7 @@ canvas.height = window.innerHeight
 canvas.width = window.innerWidth
 const ctx = canvas.getContext('2d')
 const gameScreenW = canvas.width <= 850 || canvas.height <= 850 ? canvas.height < canvas.width ? canvas.height - 50 : canvas.width -50 : 800
-const SM = Math.floor((gameScreenW / 800) * 1.2)
+const SM = gameScreenW < 800 ? Math.floor((gameScreenW / 800) * 1.2 * 20) / 20 : 800
 const CONFIG = {
     SCREEN_SIZE: { w: canvas.width, h: canvas.height },
     GAME_SCREEN: {w: gameScreenW,h:gameScreenW,x:  canvas.width/2 - gameScreenW / 2, y: canvas.height/2 - gameScreenW / 2},
@@ -157,12 +157,12 @@ class Screen {
 class UpgradeMenu extends Screen {
     constructor() {
         super()
-        this.pos = {x: 0,y: CONFIG.SCREEN_SIZE.h/2 ,aX: 0,aY: CONFIG.SCREEN_SIZE.h}
-        this.size = {w:CONFIG.SCREEN_SIZE.w,h:(CONFIG.SCREEN_SIZE.w/5 ) / 5 * 4,aW: CONFIG.SCREEN_SIZE.w, aH:(CONFIG.SCREEN_SIZE.w/5 )*4}
+        this.pos = {x: 0,y: CONFIG.SCREEN_SIZE.h - (CONFIG.SCREEN_SIZE.h/7)*3 ,aX: 0,aY: CONFIG.SCREEN_SIZE.h}
+        this.size = {w:CONFIG.SCREEN_SIZE.w,h:CONFIG.SCREEN_SIZE.w/3,aW: CONFIG.SCREEN_SIZE.w, aH:CONFIG.SCREEN_SIZE.w/3}
         this.textDisplays = [ new Text()]
-        this.buttons = [new Button({"pos": {"x": CONFIG.SCREEN_SIZE.w - 200,"y":0},"size": {"w": 200,"h":100},"text":{"color": "black","size":"50px","style":"monospace","content": "v"},"fill": {"color": "darkslategray"},"stroke": {"color": "darkcyan","lineWidth":10},"active": true, "action": () => openSkillMenu(true),"draw": false,"parent": this})]
+        this.buttons = [new Button({"pos": {"x": CONFIG.SCREEN_SIZE.w - 50,"y":0},"size": {"w": 50,"h":50},"text":{"color": "black","size":"50px","style":"monospace","content": "v"},"fill": {"color": "rgb(6, 74, 74)"},"stroke": {"color": "black","lineWidth":10},"active": true, "action": () => openSkillMenu(true),"draw": false,"parent": this})]
         this.size = {w: CONFIG.SCREEN_SIZE.w,h:CONFIG.SCREEN_SIZE.h,aW: CONFIG.SCREEN_SIZE.w,aH:CONFIG.SCREEN_SIZE.h,}
-        this.color = {main: "darkslategray",border: "darkcyan",lineWidth: 20}
+        this.color = {main: "rgb(6, 74, 74)",border: "black",lineWidth: 10}
     }
 }
 class Text {
@@ -402,6 +402,10 @@ class Entity {
         ctx.fillStyle = this.stats.color
         ctx.arc(this.stats.pos.x,this.stats.pos.y,this.stats.dim.w/2,0,2*Math.PI)
         ctx.fill()
+        ctx.lineWidth = 1
+        ctx.strokeStyle = "black"
+        ctx.arc(this.stats.pos.x,this.stats.pos.y,this.stats.dim.w/2,0,2*Math.PI)
+        ctx.stroke()
     }
     move() {
         const newX = this.stats.pos.x + this.stats.v.x
@@ -723,6 +727,36 @@ class Magnet extends Entity {
                 "color": "brown",}) {
         super(stats)
     }
+    static draw(x,y,w = 20,h = 20) {
+        const x_start = x;
+        const x_end = x + w
+        const y_top = y;
+        const y_bottom = y + h - h / 3;
+
+        const x_notch_left = x + w / 4 ; 
+        const x_notch_right = x + w - w / 4;
+        const y_notch = y + h / 3;
+
+
+        ctx.beginPath();
+        ctx.moveTo(x_start, y_top);
+        ctx.lineTo(x_end, y_top);
+        ctx.lineTo(x_end, y_bottom);
+        ctx.lineTo(x_notch_right, y_bottom);
+        ctx.lineTo(x_notch_right, y_notch);
+        ctx.lineTo(x_notch_left, y_notch);
+        ctx.lineTo(x_notch_left, y_bottom);
+        ctx.lineTo(x_start, y_bottom);
+        ctx.lineTo(x_start, y_top);
+
+        ctx.fillStyle = "brown";
+        ctx.fill();
+        ctx.fillStyle = "gold"
+        const bottomRectH = h / 3
+        const bottomRectW = w / 4
+        ctx.fillRect(x_start,y_bottom,bottomRectW,bottomRectH)
+        ctx.fillRect(x_notch_right,y_bottom,bottomRectW,bottomRectH)
+    }
     checkPlayerCollision() {
         if(this.checkCollision(player)) {
             this.active = false
@@ -731,11 +765,11 @@ class Magnet extends Entity {
     }
     tickUpdate() {
         if(!this.active) return
-        this.draw()
+        Magnet.draw(this.stats.pos.x,this.stats.pos.y)
         this.checkPlayerCollision()
     }
     hitPlayer() {
-        magnet = 10
+        magnet = 300
     }
 }
 class Coin extends Entity {
@@ -775,8 +809,8 @@ class Coin extends Entity {
         const dx = player.stats.pos.x - this.stats.pos.x
         const dy = player.stats.pos.y - this.stats.pos.y
         const radians = Math.atan2(dy, dx)
-        const vx = Math.cos(radians)  * magnet
-        const vy = Math.sin(radians) * magnet
+        const vx = Math.cos(radians)  * 10
+        const vy = Math.sin(radians) * 10
         this.stats.v.x = vx;
         this.stats.v.y = vy;
     }
@@ -928,6 +962,13 @@ class GameManager {
             textAlign: 'left', 
             textBaseline: 'top'
         })
+        if(magnet) {
+            Magnet.draw(CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w -10 - 40,CONFIG.GAME_SCREEN.y + 50)
+            magnet -= 1;
+            if(magnet <= 0) {
+                magnet = false
+            }
+        }
         if(!player.active) homeScreen.active = true
         if(enemies.length <= 0) {
             this.waveCooldown -= 1
@@ -939,15 +980,8 @@ class GameManager {
         }
     }
     entityUpdate() {
-        let coins = 0
         for(let item of items) {
             item.tickUpdate()
-            if(item.type === "coin") {
-                coins++;
-            }
-        }
-        if(coins <= 0 ) {
-            magnet = false
         }
         for(let enemie of enemies) {
             enemie.tickUpdate()
@@ -976,7 +1010,7 @@ class GameManager {
                 y = Math.random() < 0.5 ? CONFIG.GAME_SCREEN.y + CONFIG.GAME_SCREEN.h - 60 : CONFIG.GAME_SCREEN.y + 60
                 x = randInt(CONFIG.GAME_SCREEN.x + 60, CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w - 60)
             }
-            const drop = Math.random() < 0.1 ? {"item":"magnet"} : {"item": "coin","coins": 20 + baseGraph}
+            const drop = Math.random() < 0.5 ? {"item":"magnet"} : {"item": "coin","coins": 20 + baseGraph}
             enemies.push(new Enemy({
                 "dim": {
                     "h": CONFIG.ENEMY_STATS.SIZE.HEIGHT, 

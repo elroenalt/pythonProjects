@@ -5,7 +5,6 @@ body, html {
     background-color: rgb(34, 69, 69);
 }
 #gameScreen {
-    color: darkgrey;
     background-color: darkslategray;
     color: rgba(255, 0, 217, 0.363);
     position: relative;
