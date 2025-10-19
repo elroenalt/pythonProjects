@@ -2,10 +2,11 @@ const canvas = document.querySelector('#gameScreen')
 canvas.height = window.innerHeight
 canvas.width = window.innerWidth
 const ctx = canvas.getContext('2d')
-const SM = 1.2
+const gameScreenW = canvas.width <= 850 || canvas.height <= 850 ? canvas.height < canvas.width ? canvas.height - 50 : canvas.width -50 : 800
+const SM = Math.floor((gameScreenW / 800) * 1.2)
 const CONFIG = {
     SCREEN_SIZE: { w: canvas.width, h: canvas.height },
-    GAME_SCREEN: {w: 800,h:800,x:  canvas.width/2 - 800 / 2, y: canvas.height/2 - 800 / 2},
+    GAME_SCREEN: {w: gameScreenW,h:gameScreenW,x:  canvas.width/2 - gameScreenW / 2, y: canvas.height/2 - gameScreenW / 2},
     PLAYER_STATS: { 
         SIZE: {
             WIDTH: 40 * SM,
@@ -460,7 +461,6 @@ class Player extends Entity {
             "max": CONFIG.PLAYER_STATS.HEALTH.MAX,
             "cur": CONFIG.PLAYER_STATS.HEALTH.MAX,
             "invunerability":10},
-        "coins": 0,
         "projectyle": {
             "penetrate": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.PENETRATE,
             "cooldown": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.COOLDOWN,
@@ -614,6 +614,10 @@ class Enemy extends Entity {
             "x": 0,
             "y":0},
         "color": 'red',
+        "drop": {
+            "item": "coin",
+            "coins": 20
+        },
         "move": {
             "checkCooldown": 10,
             "speed":2,},
@@ -670,7 +674,8 @@ class Enemy extends Entity {
         }
     }
     onDeath() {
-        items.push(new Coin({
+        if(this.stats.drop.item === "coin") {
+            items.push(new Coin({
                 "dim": {
                     "h": 20 * SM, 
                     "w": 20 * SM},
@@ -683,7 +688,23 @@ class Enemy extends Entity {
                     "x": 0,
                     "y": 0,},
                 "color": "gold",
-                "value": 200}))
+                "value": this.stats.drop.coins}))
+        }else {
+            items.push(new Magnet({
+                "dim": {
+                    "h": 20 * SM, 
+                    "w": 20 * SM},
+                "pos":{
+                    "x": this.stats.pos.x,
+                    "y": this.stats.pos.y,
+                    "rotX":0,
+                    "rotY":0},
+                "v": {
+                    "x": 0,
+                    "y": 0,},
+                "color": "brown",}))
+        }
+        
     }
 }
 class Magnet extends Entity {
@@ -702,12 +723,19 @@ class Magnet extends Entity {
                 "color": "brown",}) {
         super(stats)
     }
+    checkPlayerCollision() {
+        if(this.checkCollision(player)) {
+            this.active = false
+            this.hitPlayer()
+        }
+    }
     tickUpdate() {
         if(!this.active) return
         this.draw()
         this.checkPlayerCollision()
     }
     hitPlayer() {
+        magnet = 10
     }
 }
 class Coin extends Entity {
@@ -726,11 +754,31 @@ class Coin extends Entity {
                 "color": "black",
                 "value": 200}) {
         super(stats)
+        this.type = "coin"
     }
     tickUpdate() {
         if(!this.active) return
+        if(magnet) {
+            this.magnetCheckCooldown = 0
+            if(this.magnetCheckCooldown <= 0) {
+                this.pathFindToPlayer()
+                this.magnetCheckCooldow = 100
+            }
+            this.magnetCheckCooldow  <= 0
+            this.stats.pos.x += this.stats.v.x
+            this.stats.pos.y += this.stats.v.y
+        }
         this.draw()
         this.checkPlayerCollision()
+    }
+    pathFindToPlayer() {
+        const dx = player.stats.pos.x - this.stats.pos.x
+        const dy = player.stats.pos.y - this.stats.pos.y
+        const radians = Math.atan2(dy, dx)
+        const vx = Math.cos(radians)  * magnet
+        const vy = Math.sin(radians) * magnet
+        this.stats.v.x = vx;
+        this.stats.v.y = vy;
     }
     draw() {
         super.draw()
@@ -756,12 +804,12 @@ class Coin extends Entity {
         })
     }
     hitPlayer() {
+        this.active = false
         player.stats.coins += this.stats.value
         this.stats.value = 0;
     }
     checkPlayerCollision() {
         if(this.checkCollision(player)) {
-            this.active = false
             this.hitPlayer()
         }
     }
@@ -813,10 +861,9 @@ class GameManager {
             size: {w:40,h:30},
             active: true,
             "action": () => {
-                gameRunning = !gameRunning
+                changeGameRunning()
             },
             "draw": () => {
-                ctx.fillRect(CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w / 2,CONFIG.GAME_SCREEN.y + 9,40,32)
                 ctx.fillStyle = 'darkgreen'
                 if(gameRunning) {
                     const x1 = CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w / 2 
@@ -843,11 +890,6 @@ class GameManager {
         projectiles = []
     }
     tickUpdate() {
-        ctx.fillStyle = "darkgrey"
-        this.button.draw()
-        if(!gameRunning) {
-            return
-        }
         ctx.clearRect(0,0,CONFIG.SCREEN_SIZE.w,CONFIG.SCREEN_SIZE.h)
         ctx.lineWidth = 10
         ctx.fillStyle = "black"
@@ -897,8 +939,15 @@ class GameManager {
         }
     }
     entityUpdate() {
-        for(let coin of items) {
-            coin.tickUpdate()
+        let coins = 0
+        for(let item of items) {
+            item.tickUpdate()
+            if(item.type === "coin") {
+                coins++;
+            }
+        }
+        if(coins <= 0 ) {
+            magnet = false
         }
         for(let enemie of enemies) {
             enemie.tickUpdate()
@@ -927,29 +976,31 @@ class GameManager {
                 y = Math.random() < 0.5 ? CONFIG.GAME_SCREEN.y + CONFIG.GAME_SCREEN.h - 60 : CONFIG.GAME_SCREEN.y + 60
                 x = randInt(CONFIG.GAME_SCREEN.x + 60, CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w - 60)
             }
+            const drop = Math.random() < 0.1 ? {"item":"magnet"} : {"item": "coin","coins": 20 + baseGraph}
             enemies.push(new Enemy({
-        "dim": {
-            "h": CONFIG.ENEMY_STATS.SIZE.HEIGHT, 
-            "w": CONFIG.ENEMY_STATS.SIZE.WIDTH},
-        "pos":{
-            "x": x,
-            "y":y,
-            "rotX":0,
-            "rotY":0},
-        "v": {
-            "x": 0,
-            "y":0},
-        "color": 'red',
-        "move": {
-            "checkCooldown": CONFIG.ENEMY_STATS.MOVE.CHECKCOOLDOWN,
-            "speed": CONFIG.ENEMY_STATS.MOVE.SPEED,},
-        "attack": {
-            "damage": EnemyDAMAGE,
-            "cooldown":2},
-        "health":{
-            "max": EnemyHealth,
-            "cur":EnemyHealth,
-            "invunerability": CONFIG.ENEMY_STATS.HEALTH.INVUNERABILITY}}))
+                "dim": {
+                    "h": CONFIG.ENEMY_STATS.SIZE.HEIGHT, 
+                    "w": CONFIG.ENEMY_STATS.SIZE.WIDTH},
+            "pos":{
+                "x": x,
+                "y":y,
+                "rotX":0,
+                "rotY":0},
+            "v": {
+                "x": 0,
+                "y":0},
+            "color": 'red',
+            "drop": drop,
+            "move": {
+                "checkCooldown": CONFIG.ENEMY_STATS.MOVE.CHECKCOOLDOWN,
+                "speed": CONFIG.ENEMY_STATS.MOVE.SPEED,},
+            "attack": {
+                "damage": EnemyDAMAGE,
+                "cooldown":2},
+            "health":{
+                "max": EnemyHealth,
+                "cur":EnemyHealth,
+                "invunerability": CONFIG.ENEMY_STATS.HEALTH.INVUNERABILITY}}))
         }
     }
 }
@@ -967,10 +1018,15 @@ function animationLoop() {
         ctx.clearRect(0,0,CONFIG.SCREEN_SIZE.w,CONFIG.SCREEN_SIZE.h)
         homeScreen.updateLoop()
         upgradeMenu.tickUpdate()
-    }else{
+    }else if(gameRunning){
         gameManager.tickUpdate()
+        
     }
     requestAnimationFrame(animationLoop)
+}
+function changeGameRunning() {
+    gameRunning = !gameRunning
+    gameManager.tickUpdate()
 }
 canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
@@ -985,7 +1041,7 @@ function randInt(min,max) {
 document.addEventListener('keydown', (e) => {
     const key = e.key 
     if(e.key === 'Escape') {
-        gameRunning = !gameRunning
+        changeGameRunning()
         return
     }
     keys[key] = true
