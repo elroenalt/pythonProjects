@@ -3,7 +3,7 @@ canvas.height = window.innerHeight
 canvas.width = window.innerWidth
 const ctx = canvas.getContext('2d')
 const gameScreenW = canvas.width <= 850 || canvas.height <= 850 ? canvas.height < canvas.width ? canvas.height - 50 : canvas.width -50 : 800
-const SM = gameScreenW < 800 ? Math.floor((gameScreenW / 800) * 1.2 * 20) / 20 : 800
+const SM = Math.floor((gameScreenW / 800) * 1.2 * 20) / 20 
 const CONFIG = {
     SCREEN_SIZE: { w: canvas.width, h: canvas.height },
     GAME_SCREEN: {w: gameScreenW,h:gameScreenW,x:  canvas.width/2 - gameScreenW / 2, y: canvas.height/2 - gameScreenW / 2},
@@ -18,6 +18,23 @@ const CONFIG = {
         MOVE: {
             SPEED: 8,
         },
+        UPGRADES: [
+            {
+                TEXT: "❤️ Health",
+                BASE_COST: 20,
+                BASE_VALUE: 0,
+                VALUE: 0,
+                LEVEL: 0,
+            }, 
+            {
+                TEXT: "🗡️ Damage",
+                BASE_COST: 20,
+                BASE_VALUE: 0,
+                VALUE: 0,
+                LEVEL: 0,
+            },
+            ],
+        COINS: 0,
         HEALTH: {
             REGENERATE: {
                 COOLDOWN: 300,
@@ -54,6 +71,9 @@ const CONFIG = {
         }
     }
 };
+function upgrade() {
+    
+}
 function startGame() {
     console.log('Starting Game');
     gameManager = new GameManager({"enemy": {"count": 2,"health":  CONFIG.ENEMY_STATS.HEALTH.MAX,"damage": CONFIG.ENEMY_STATS.ATTACK.DAMAGE}})
@@ -159,10 +179,54 @@ class UpgradeMenu extends Screen {
         super()
         this.pos = {x: 0,y: CONFIG.SCREEN_SIZE.h - (CONFIG.SCREEN_SIZE.h/7)*3 ,aX: 0,aY: CONFIG.SCREEN_SIZE.h}
         this.size = {w:CONFIG.SCREEN_SIZE.w,h:CONFIG.SCREEN_SIZE.w/3,aW: CONFIG.SCREEN_SIZE.w, aH:CONFIG.SCREEN_SIZE.w/3}
-        this.textDisplays = [ new Text()]
+        this.textDisplays = []
         this.buttons = [new Button({"pos": {"x": CONFIG.SCREEN_SIZE.w - 50,"y":0},"size": {"w": 50,"h":50},"text":{"color": "black","size":"50px","style":"monospace","content": "v"},"fill": {"color": "rgb(6, 74, 74)"},"stroke": {"color": "black","lineWidth":10},"active": true, "action": () => openSkillMenu(true),"draw": false,"parent": this})]
         this.size = {w: CONFIG.SCREEN_SIZE.w,h:CONFIG.SCREEN_SIZE.h,aW: CONFIG.SCREEN_SIZE.w,aH:CONFIG.SCREEN_SIZE.h,}
         this.color = {main: "rgb(6, 74, 74)",border: "black",lineWidth: 10}
+        let x = 100;
+        let y = 10;
+        for(let Upgrades of CONFIG.PLAYER_STATS.UPGRADES) {
+            if(x + 400 + 50 >= CONFIG.SCREEN_SIZE.w) {
+                x = 100;
+                y += 180 + 50
+            }
+            this.textDisplays.push(new Text({
+                text: Upgrades.TEXT,
+                x: x,
+                y: y,
+                fontColor: 'black',
+                fontSize: '60px',
+                fontFamily: 'sans-serif',
+                textAlign: 'left',
+                textBaseline: 'top'}))
+            this.buttons.push(new Button({
+                "pos": {
+                    "x": x + 200,
+                    "y": y + 150},
+                "size": {
+                    "w": 400,
+                    "h":100},
+                "text":{
+                    "color": "black",
+                    "size":"50px",
+                    "style":"monospace",
+                    "content": `L.${Upgrades.LEVEL} | +`  },
+                    "textAlign": "left",
+                "fill": {
+                    "color": "rgb(6, 74, 74)"},
+                "stroke": {
+                    "color": "black",
+                    "lineWidth":10},
+                "active": true, 
+                "action": () => openSkillMenu(true),
+                "draw": false,
+                "parent": this}))
+                
+            x += 400 + 50
+        }
+    }
+    draw() {
+        super.draw()
     }
 }
 class Text {
@@ -337,8 +401,8 @@ class Button {
             fontColor: this.text.color,
             fontSize: this.text.size,
             fontFamily: this.text.style,
-            textAlign: 'center',   
-            textBaseline: 'middle' 
+            textAlign: this.text.textAlign ? this.text.textAlign : 'center',   
+            textBaseline: this.text.textBaseline ? this.text.textBaseline :'middle' 
         });
     }
     init() {
@@ -696,8 +760,8 @@ class Enemy extends Entity {
         }else {
             items.push(new Magnet({
                 "dim": {
-                    "h": 20 * SM, 
-                    "w": 20 * SM},
+                    "h": 25 * SM, 
+                    "w": 25 * SM},
                 "pos":{
                     "x": this.stats.pos.x,
                     "y": this.stats.pos.y,
@@ -765,11 +829,15 @@ class Magnet extends Entity {
     }
     tickUpdate() {
         if(!this.active) return
-        Magnet.draw(this.stats.pos.x,this.stats.pos.y)
+        Magnet.draw(this.stats.pos.x,this.stats.pos.y,this.stats.dim.w,this.stats.dim.h)
         this.checkPlayerCollision()
     }
     hitPlayer() {
-        magnet = 300
+        if(magnet) {
+            magnet = 300
+        }else {
+            magnet += 300
+        }
     }
 }
 class Coin extends Entity {
@@ -879,7 +947,7 @@ class GameManager {
             "max": CONFIG.PLAYER_STATS.HEALTH.MAX,
             "cur": CONFIG.PLAYER_STATS.HEALTH.MAX,
             "invunerability":10},
-        "coins": 20,
+        "coins": CONFIG.PLAYER_STATS.COINS,
         "projectyle": {
             "penetrate": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.PENETRATE,
             "cooldown": CONFIG.PLAYER_STATS.ABILITIES.PROJECTYLE.COOLDOWN,
@@ -963,13 +1031,13 @@ class GameManager {
             textBaseline: 'top'
         })
         if(magnet) {
-            Magnet.draw(CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w -10 - 40,CONFIG.GAME_SCREEN.y + 50)
+            Magnet.draw(CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w - 25 * SM - 10,CONFIG.GAME_SCREEN.y + 25 * SM + 10 ,25*SM,25*SM)
             magnet -= 1;
             if(magnet <= 0) {
                 magnet = false
             }
         }
-        if(!player.active) homeScreen.active = true
+        if(!player.active) this.gameOver()
         if(enemies.length <= 0) {
             this.waveCooldown -= 1
             if(this.waveCooldown <= 0) {
@@ -978,6 +1046,10 @@ class GameManager {
                 this.nextWave()
             }
         }
+    }
+    gameOver() {
+        homeScreen.active = true
+        CONFIG.PLAYER_STATS.COINS += player.stats.coins
     }
     entityUpdate() {
         for(let item of items) {
