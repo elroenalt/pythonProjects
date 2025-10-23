@@ -14,9 +14,9 @@ const CONFIG = {
         CUBE: {
             COLOR1: 'red',
             COLOR2: 'black',
-            LINE_WIDTH: 1,},
+            LINE_WIDTH: 3,},
         MOVE: {
-            SPEED: 8,
+            SPEED: 7,
         },
         UPGRADES: [
             {
@@ -79,7 +79,7 @@ function startGame() {
     gameManager = new GameManager({"enemy": {"count": 2,"health":  CONFIG.ENEMY_STATS.HEALTH.MAX,"damage": CONFIG.ENEMY_STATS.ATTACK.DAMAGE}})
     gameManager.Wave = 0
     gameManager.nextWave()
-    homeScreen.active = false;
+    homeScreen.turnOff()
 }
 function openSkillMenu(open) {
     upgradeMenu.opening = open ? false : true
@@ -118,6 +118,18 @@ class Screen {
         this.closing = false
         this.opening = false
     }
+    turnOff() {
+        this.active = false
+        for(let button of this.buttons) {
+            button.update({deactivate: true})
+        }
+    }
+    turnOn() {
+        this.active = true
+        for(let button of this.buttons) {
+            button.update({activate: true})
+        }
+    }
     closeScreen() {
         this.pos.aY = 0
         this.closing = true
@@ -130,9 +142,15 @@ class Screen {
         if(!this.active) return
         if(this.opening === true) {
             this.openAnimation()
+            for(let button of this.buttons) {
+                button.update({"pos":{"x":this.pos.aX,"y":this.pos.aY}})
+            }
         }
         if(this.closing === true) {
             this.closeAnimation()
+            for(let button of this.buttons) {
+                button.update({"pos":{"x":this.pos.aX,"y":this.pos.aY}})
+            }
         }
         this.drawScreen()
         this.drawElements()
@@ -180,7 +198,7 @@ class UpgradeMenu extends Screen {
         this.pos = {x: 0,y: CONFIG.SCREEN_SIZE.h - (CONFIG.SCREEN_SIZE.h/7)*3 ,aX: 0,aY: CONFIG.SCREEN_SIZE.h}
         this.size = {w:CONFIG.SCREEN_SIZE.w,h:CONFIG.SCREEN_SIZE.w/3,aW: CONFIG.SCREEN_SIZE.w, aH:CONFIG.SCREEN_SIZE.w/3}
         this.textDisplays = []
-        this.buttons = [new Button({"pos": {"x": CONFIG.SCREEN_SIZE.w - 50,"y":0},"size": {"w": 50,"h":50},"text":{"color": "black","size":"50px","style":"monospace","content": "v"},"fill": {"color": "rgb(6, 74, 74)"},"stroke": {"color": "black","lineWidth":10},"active": true, "action": () => openSkillMenu(true),"draw": false,"parent": this})]
+        this.buttons = [new Button({"pos": {"x": CONFIG.SCREEN_SIZE.w - 50,"y":0},"size": {"w": 50,"h":50},"text":{"color": "black","size":"50px","style":"monospace","content": "v"},"fill": {"color": "rgb(6, 74, 74)"},"stroke": {"color": "black","lineWidth":10},"active": true, "action": () => openSkillMenu(true),"draw": false,"acPos": this.pos})]
         this.size = {w: CONFIG.SCREEN_SIZE.w,h:CONFIG.SCREEN_SIZE.h,aW: CONFIG.SCREEN_SIZE.w,aH:CONFIG.SCREEN_SIZE.h,}
         this.color = {main: "rgb(6, 74, 74)",border: "black",lineWidth: 10}
         let x = 100;
@@ -220,7 +238,7 @@ class UpgradeMenu extends Screen {
                 "active": true, 
                 "action": () => openSkillMenu(true),
                 "draw": false,
-                "parent": this}))
+                "acPos": this.pos}))
                 
             x += 400 + 50
         }
@@ -255,12 +273,12 @@ class HomeScreen {
                     "x": CONFIG.SCREEN_SIZE.w/2,
                     "y":CONFIG.SCREEN_SIZE.h/2 - 90},
                 "size": {
-                    "w": 200,
-                    "h":75},
+                    "w": 250 *SM,
+                    "h": 100 *SM},
                 "text":{
-                    "content":"startGame",
+                    "content":"Play",
                     "color": "black",
-                    "size":"50px",
+                    "size":"90px",
                     "style":"Bebas Neue",},
                 "fill": {
                     "color": "darkcyan"},
@@ -269,28 +287,29 @@ class HomeScreen {
                     "lineWidth":4},
                 "active": true, 
                 "action": startGame,
-                "parent": this},),
+                "aPos": {"x": 0,"y":0}},),
 
             "openUpgrades": new Button({
                 "pos": {
-                    "x": CONFIG.SCREEN_SIZE.w -150,
-                    "y": CONFIG.SCREEN_SIZE.h - 150},
+                    "x": CONFIG.SCREEN_SIZE.w - 50,
+                    "y": CONFIG.SCREEN_SIZE.h - 50},
                 "size": {
-                    "w": 200,
-                    "h":75},
+                    "w": 50,
+                    "h":50},
                 "text":{
-                    "content":"Upgrades",
+                    "content": "∧",
                     "color": "black",
-                    "size":"50px",
-                    "style":"Bebas Neue",},
+                    "size":"60px",
+                    "style":"Bebas Neue",
+                    "textBaseline": "middle",},
                 "fill": {
-                    "color": "darkcyan"},
+                    "color": "rgb(6, 74, 74)"},
                 "stroke": {
                     "color": "black",
                     "lineWidth":4},
                 "active": true, 
                 "action": openSkillMenu,
-                "parent": this},)
+                "aPos": {"x": 0,"y":0}},)
         
         }
         this.active = true;
@@ -322,6 +341,18 @@ class HomeScreen {
         this.update()
         this.drawScreen()
     }
+    turnOff() {
+        this.active = false
+        for(let button of this.buttons) {
+            button.update({deactivate: true})
+        }
+    }
+    turnOn() {
+        this.active = true
+        for(let button of this.buttons) {
+            button.update({activate: true})
+        }
+    }
     update() {
         this.animation.cube.pos.x += this.animation.cube.v.x;
         this.animation.cube.pos.y += this.animation.cube.v.y;
@@ -339,6 +370,7 @@ class HomeScreen {
         ctx.clearRect(0, 0, CONFIG.SCREEN_SIZE.w, CONFIG.SCREEN_SIZE.h);
         
         ctx.fillStyle = 'blue'
+        ctx.strokeStyle = "5"
         const CircleX = this.animation.circle.pos.x
         const CircleY = this.animation.circle.pos.y
         ctx.beginPath()
@@ -353,6 +385,10 @@ class HomeScreen {
         ctx.fillStyle = CONFIG.PLAYER_STATS.CUBE.COLOR1
         ctx.fillRect(cubeX, cubeY, cubeW, cubeH)
 
+        ctx.fillStyle = "rgb(6, 74, 74)"
+        ctx.fillRect(0,CONFIG.SCREEN_SIZE.h - 50,CONFIG.SCREEN_SIZE.w,CONFIG.SCREEN_SIZE.h)
+        ctx.strokeStyle = "black"
+        ctx.strokeRect(0,CONFIG.SCREEN_SIZE.h - 50,CONFIG.SCREEN_SIZE.w,CONFIG.SCREEN_SIZE.h)
         ctx.strokeStyle = CONFIG.PLAYER_STATS.CUBE.COLOR2
         ctx.lineWidth = CONFIG.PLAYER_STATS.CUBE.LINE_WIDTH
         ctx.strokeRect(cubeX, cubeY, cubeW, cubeH)
@@ -364,40 +400,58 @@ class HomeScreen {
             text: "Cuby Shooter", 
             x: CONFIG.SCREEN_SIZE.w/2, 
             y: CONFIG.SCREEN_SIZE.h/4, 
-            fontColor: 'black', 
-            fontSize: '100px', 
-            fontFamily: 'Bebas Neue', 
+            fontColor: '#000', 
+            fontSize: '130px', 
+            fontFamily: 'Workbench', 
             textAlign: 'center', 
             textBaseline: 'middle'
         })
     }
 }
 class Button {
-    constructor(config = {"pos": {"x": 0 +200,"y":200 +100},"size": {"w": 200,"h":100},"text":{"color": "black","size":"50px","style":"Bebas Neue","content": "idk"},"fill": {"color": "gray"},"stroke": {"color": "black","lineWidth":10},"active": true, "action": work,"draw": false,"parent": screen},) {
+    constructor(config = {"pos": {"x": 0 +200,"y":200 +100},"size": {"w": 200,"h":100},"text":{"color": "black","size":"50px","style":"Bebas Neue","content": "idk"},"fill": {"color": "gray"},"stroke": {"color": "black","lineWidth":10},"active": true, "action": work,"draw": false,"acPos": {"x":0,"y":0}},) {
         this.size = config.size
         this.pos = {"x": config.pos.x ,"y": config.pos.y }
+        this.acPos = {"x": config.pos.x,"y": config.pos.y}
         this.fill = config.fill
         this.stroke = config.stroke
         this.text = config.text
         this.action = config.action
         this.active = config.active
-        this.parent = config.parent
         if(config.draw) {
             this.draw = config.draw
         }
-        this.init()
+        this.managerIndex = mouseManager.buttons.length
+        mouseManager.buttons.push({"pos": this.acPos,"size": this.size,"action":this.action,"active": this.active})
     }
-    draw(x,y) {
+    update(config = {pos: {x:0,y:0}}) {
+        if(config.pos) {
+            const pos = config.pos
+            this.acPos.x = this.pos.x + pos.x
+            this.acPos.y = this.pos.y + pos.y
+            mouseManager.buttons[this.managerIndex].pos = this.acPos
+        }
+        if(config.activate) {
+            this.active = true
+            mouseManager.buttons[this.managerIndex].active = true
+        }
+        if(config.disable) {
+            this.active = false
+            mouseManager.buttons[this.managerIndex].active = false
+        }
+        
+    }
+    draw() {
         ctx.strokeStyle = this.stroke.color;
         ctx.lineWidth = this.stroke.lineWidth;
         ctx.beginPath();
-        ctx.strokeRect(x +this.pos.x - this.size.w / 2, y+this.pos.y - this.size.h / 2, this.size.w, this.size.h);
+        ctx.strokeRect(this.acPos.x - this.size.w / 2, this.acPos.y - this.size.h / 2, this.size.w, this.size.h);
         ctx.fillStyle = this.fill.color;
-        ctx.fillRect(x+this.pos.x - this.size.w / 2, y+this.pos.y - this.size.h / 2, this.size.w, this.size.h);
+        ctx.fillRect(this.acPos.x - this.size.w / 2, this.acPos.y - this.size.h / 2, this.size.w, this.size.h);
         drawText({
             text: this.text.content,
-            x: x + this.pos.x,     
-            y: y + this.pos.y,    
+            x: this.acPos.x,     
+            y: this.acPos.y,    
             fontColor: this.text.color,
             fontSize: this.text.size,
             fontFamily: this.text.style,
@@ -405,23 +459,38 @@ class Button {
             textBaseline: this.text.textBaseline ? this.text.textBaseline :'middle' 
         });
     }
+}
+class MouseManager {
+    constructor() {
+        this.init()
+        this.buttons = []
+    }
+    checkButtons() {
+        for(let button of this.buttons ) {
+            if(button.active &&
+                (mouse.x > button.pos.x - button.size.w / 2 && 
+                mouse.x < button.pos.x + button.size.w / 2) && 
+                (mouse.y > button.pos.y - button.size.h / 2 && 
+                mouse.y < button.pos.y + button.size.h / 2)) {
+                
+                button.action();
+            }
+        }
+    }
     init() {
         canvas.addEventListener('click', (e) => {
-        
-        const absCenterX = this.parent.pos.aX + this.pos.x;
-        const absCenterY = this.parent.pos.aY + this.pos.y;
-        
-        if (this.active && 
-            (mouse.x > absCenterX - this.size.w / 2 && 
-             mouse.x < absCenterX + this.size.w / 2) && 
-            (mouse.y > absCenterY - this.size.h / 2 && 
-             mouse.y < absCenterY + this.size.h / 2)) {
-                
-                this.action();
-        }
-    });
+            this.checkButtons()
+        })
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            mouse.x = x
+            mouse.y = y
+        })
     }
 }
+const mouseManager = new MouseManager()
 class Entity {
     constructor(stats = {
         "dim": {
@@ -966,7 +1035,7 @@ class GameManager {
                 changeGameRunning()
             },
             "draw": () => {
-                ctx.fillStyle = 'darkgreen'
+                ctx.fillStyle = 'black'
                 if(gameRunning) {
                     const x1 = CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w / 2 
                     const x2 = CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w / 2 + 40 -15
@@ -987,7 +1056,7 @@ class GameManager {
                     ctx.fill()
                 }
             },
-            "parent":this})
+            "acPos": {"x": CONFIG.GAME_SCREEN.x, "y":CONFIG.GAME_SCREEN.y},});
         enemies = []
         projectiles = []
     }
@@ -1004,9 +1073,9 @@ class GameManager {
             text: `Wave: ${this.Wave + 1}`,
             x: CONFIG.GAME_SCREEN.x + CONFIG.GAME_SCREEN.w -10, 
             y: CONFIG.GAME_SCREEN.y + 10, 
-            fontColor: 'white', 
+            fontColor: 'black', 
             fontSize: '20px', 
-            fontFamily: 'sans-serif', 
+            fontFamily: 'Sixtyfour', 
             textAlign: 'right', 
             textBaseline: 'top'
         })
@@ -1014,9 +1083,9 @@ class GameManager {
             text: `Coins: ${player.stats.coins}$`, 
             x: CONFIG.GAME_SCREEN.x  + 10, 
             y: CONFIG.GAME_SCREEN.y + 50, 
-            fontColor: 'white', 
+            fontColor: 'black', 
             fontSize: '20px', 
-            fontFamily: 'sans-serif', 
+            fontFamily: 'Sixtyfour', 
             textAlign: 'left', 
             textBaseline: 'top'
         })
@@ -1024,9 +1093,9 @@ class GameManager {
             text: `Health: ${player.stats.health.cur}/${player.stats.health.max}`, 
             x: CONFIG.GAME_SCREEN.x  + 10, 
             y: CONFIG.GAME_SCREEN.y + 10, 
-            fontColor: 'white', 
+            fontColor: 'black', 
             fontSize: '20px', 
-            fontFamily: 'sans-serif', 
+            fontFamily: 'Sixtyfour', 
             textAlign: 'left', 
             textBaseline: 'top'
         })
@@ -1048,7 +1117,7 @@ class GameManager {
         }
     }
     gameOver() {
-        homeScreen.active = true
+        homeScreen.turnOff()
         CONFIG.PLAYER_STATS.COINS += player.stats.coins
     }
     entityUpdate() {
@@ -1134,13 +1203,6 @@ function changeGameRunning() {
     gameRunning = !gameRunning
     gameManager.tickUpdate()
 }
-canvas.addEventListener('mousemove', (e) => {
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    mouse.x = x
-    mouse.y = y
-})
 function randInt(min,max) {
     return Math.floor(Math.random() * (max - min + 1)) + min; 
 }
